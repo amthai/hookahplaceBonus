@@ -51,18 +51,23 @@ db.serialize(() => {
 // Получить информацию о пользователе
 app.get('/api/user/:userId', (req, res) => {
   const userId = req.params.userId;
+  console.log('Getting user data for ID:', userId);
   
   db.get(
     'SELECT * FROM users WHERE id = ?',
     [userId],
     (err, user) => {
       if (err) {
+        console.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
       
       if (!user) {
+        console.log('User not found with ID:', userId);
         return res.status(404).json({ error: 'User not found' });
       }
+      
+      console.log('User found:', user);
       
       // Получаем количество посещений
       db.get(
@@ -108,8 +113,11 @@ app.post('/api/user', (req, res) => {
   const { telegram_id, username, first_name, last_name } = req.body;
   
   if (!telegram_id) {
+    console.log('Missing telegram_id');
     return res.status(400).json({ error: 'telegram_id is required' });
   }
+  
+  console.log('Inserting user with telegram_id:', telegram_id);
   
   db.run(
     'INSERT OR REPLACE INTO users (telegram_id, username, first_name, last_name) VALUES (?, ?, ?, ?)',
@@ -121,6 +129,8 @@ app.post('/api/user', (req, res) => {
       }
       
       console.log('User created/updated with ID:', this.lastID);
+      console.log('User created/updated with changes:', this.changes);
+      
       res.json({ 
         message: 'User created/updated successfully',
         user_id: this.lastID 

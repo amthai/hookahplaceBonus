@@ -284,6 +284,13 @@
                     await createUser(demoUser);
                 }
                 
+                // Проверяем, что пользователь создан
+                if (!currentUser || !currentUser.id) {
+                    throw new Error('Не удалось создать пользователя');
+                }
+                
+                console.log('User created successfully, loading data...');
+                
                 // Загружаем данные пользователя
                 await loadUserData();
                 await loadVisitHistory();
@@ -332,13 +339,23 @@
                     throw new Error('Не получен user_id от сервера');
                 }
                 
-                currentUser = { id: result.user_id, ...telegramUser };
+                // Устанавливаем currentUser с правильной структурой
+                currentUser = { 
+                    id: result.user_id,
+                    telegram_id: userData.telegram_id,
+                    username: userData.username,
+                    first_name: userData.first_name,
+                    last_name: userData.last_name
+                };
+                
                 console.log('User created successfully:', currentUser);
                 
-                // Проверяем, что currentUser установлен
+                // Дополнительная проверка
                 if (!currentUser || !currentUser.id) {
                     throw new Error('currentUser не установлен правильно');
                 }
+                
+                return currentUser;
                 
             } catch (error) {
                 console.error('Error creating user:', error);
@@ -348,9 +365,9 @@
 
         // Загрузка данных пользователя
         async function loadUserData() {
-            if (!currentUser) {
-                console.error('currentUser is null');
-                return;
+            if (!currentUser || !currentUser.id) {
+                console.error('currentUser is null or has no id:', currentUser);
+                throw new Error('Пользователь не определен');
             }
             
             console.log('Loading user data for user ID:', currentUser.id);
@@ -362,12 +379,20 @@
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('User data API error:', errorText);
+                    
+                    // Если пользователь не найден, попробуем создать его заново
+                    if (response.status === 404) {
+                        console.log('User not found, attempting to recreate...');
+                        throw new Error('Пользователь не найден в базе данных');
+                    }
+                    
                     throw new Error('Ошибка загрузки данных пользователя: ' + errorText);
                 }
 
                 const data = await response.json();
                 console.log('User data API response:', data);
                 
+                // Обновляем currentUser с данными из БД
                 currentUser = { ...currentUser, ...data.user };
                 
                 // Обновляем интерфейс
