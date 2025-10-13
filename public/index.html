@@ -255,27 +255,17 @@
         async function initApp() {
             try {
                 console.log('Initializing app...');
-                console.log('Telegram initData:', tg.initData);
-                console.log('Telegram initDataUnsafe:', tg.initDataUnsafe);
                 
-                // Получаем данные пользователя из Telegram
-                const user = tg.initDataUnsafe?.user;
-                console.log('Telegram user:', user);
+                // Создаем тестового пользователя для демонстрации
+                const testUser = {
+                    id: Math.floor(Math.random() * 1000000) + 100000,
+                    username: 'demo_user',
+                    first_name: 'Demo',
+                    last_name: 'User'
+                };
                 
-                if (!user) {
-                    // Если нет данных пользователя, создаем тестового пользователя
-                    console.log('No user data from Telegram, creating test user');
-                    const testUser = {
-                        id: 123456789,
-                        username: 'testuser',
-                        first_name: 'Test',
-                        last_name: 'User'
-                    };
-                    await createUser(testUser);
-                } else {
-                    // Создаем или обновляем пользователя
-                    await createUser(user);
-                }
+                console.log('Creating demo user:', testUser);
+                await createUser(testUser);
                 
                 // Загружаем данные пользователя
                 await loadUserData();
@@ -292,28 +282,35 @@
         async function createUser(telegramUser) {
             console.log('Creating user:', telegramUser);
             try {
+                const userData = {
+                    telegram_id: parseInt(telegramUser.id),
+                    username: String(telegramUser.username || 'demo_user'),
+                    first_name: String(telegramUser.first_name || 'Demo'),
+                    last_name: String(telegramUser.last_name || 'User')
+                };
+                
+                console.log('Sending user data:', userData);
+                
                 const response = await fetch('/api/user', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        telegram_id: telegramUser.id,
-                        username: telegramUser.username || 'unknown',
-                        first_name: telegramUser.first_name || 'User',
-                        last_name: telegramUser.last_name || ''
-                    })
+                    body: JSON.stringify(userData)
                 });
 
+                console.log('Response status:', response.status);
+                
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('API Error:', errorData);
-                    throw new Error('Ошибка создания пользователя: ' + (errorData.error || 'Неизвестная ошибка'));
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error('Ошибка создания пользователя: ' + errorText);
                 }
 
                 const result = await response.json();
+                console.log('User creation result:', result);
                 currentUser = { id: result.user_id, ...telegramUser };
-                console.log('User created:', currentUser);
+                console.log('User created successfully:', currentUser);
             } catch (error) {
                 console.error('Error creating user:', error);
                 throw error;
