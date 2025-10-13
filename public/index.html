@@ -193,52 +193,6 @@
             margin-bottom: 20px;
             text-align: center;
         }
-
-        .qr-scanner {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .qr-scanner.active {
-            display: flex;
-        }
-
-        .scanner-content {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            max-width: 300px;
-            margin: 20px;
-        }
-
-        .scanner-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-
-        .scanner-button {
-            background: var(--tg-theme-button-color, #2481cc);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
-            margin: 5px;
-            cursor: pointer;
-        }
-
-        .close-scanner {
-            background: #ff6b6b;
-        }
     </style>
 </head>
 <body>
@@ -287,22 +241,6 @@
         </div>
     </div>
 
-    <!-- QR Scanner Modal -->
-    <div id="qrScanner" class="qr-scanner">
-        <div class="scanner-content">
-            <div class="scanner-title">Сканируйте QR код</div>
-            <div style="margin: 20px 0;">
-                <div id="camera" style="width: 200px; height: 200px; background: #f0f0f0; margin: 0 auto; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">
-                    📷 Камера
-                </div>
-            </div>
-            <div>
-                <button class="scanner-button" onclick="simulateQRScan()">Симулировать сканирование</button>
-                <button class="scanner-button close-scanner" onclick="closeQRScanner()">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Telegram WebApp API
         const tg = window.Telegram.WebApp;
@@ -316,10 +254,16 @@
         // Инициализация приложения
         async function initApp() {
             try {
+                console.log('Initializing app...');
+                console.log('Telegram initData:', tg.initData);
+                console.log('Telegram initDataUnsafe:', tg.initDataUnsafe);
+                
                 // Получаем данные пользователя из Telegram
                 const user = tg.initDataUnsafe?.user;
+                console.log('Telegram user:', user);
+                
                 if (!user) {
-                    showError('Ошибка: не удалось получить данные пользователя');
+                    showError('Ошибка: не удалось получить данные пользователя из Telegram');
                     return;
                 }
 
@@ -333,12 +277,13 @@
                 
             } catch (error) {
                 console.error('Ошибка инициализации:', error);
-                showError('Ошибка загрузки данных');
+                showError('Ошибка загрузки данных: ' + error.message);
             }
         }
 
         // Создание пользователя
         async function createUser(telegramUser) {
+            console.log('Creating user:', telegramUser);
             const response = await fetch('/api/user', {
                 method: 'POST',
                 headers: {
@@ -358,10 +303,16 @@
 
             const result = await response.json();
             currentUser = { id: result.user_id, ...telegramUser };
+            console.log('User created:', currentUser);
         }
 
         // Загрузка данных пользователя
         async function loadUserData() {
+            if (!currentUser) {
+                console.error('currentUser is null');
+                return;
+            }
+            
             const response = await fetch(`/api/user/${currentUser.id}`);
             if (!response.ok) {
                 throw new Error('Ошибка загрузки данных пользователя');
@@ -386,6 +337,11 @@
 
         // Загрузка истории посещений
         async function loadVisitHistory() {
+            if (!currentUser) {
+                console.error('currentUser is null');
+                return;
+            }
+            
             const response = await fetch(`/api/visits/${currentUser.id}`);
             if (!response.ok) {
                 throw new Error('Ошибка загрузки истории посещений');
@@ -397,6 +353,11 @@
 
         // Загрузка истории бонусов
         async function loadBonusHistory() {
+            if (!currentUser) {
+                console.error('currentUser is null');
+                return;
+            }
+            
             const response = await fetch(`/api/bonuses/${currentUser.id}`);
             if (!response.ok) {
                 throw new Error('Ошибка загрузки истории бонусов');
@@ -475,18 +436,35 @@
             });
         }
 
-        // Открытие QR сканера
-        function openQRScanner() {
-            document.getElementById('qrScanner').classList.add('active');
+        // Реальное сканирование QR кода
+        async function scanQRCode() {
+            if (!currentUser) {
+                showError('Ошибка: пользователь не определен');
+                return;
+            }
+
+            try {
+                // Используем встроенный сканер Telegram
+                tg.showScanQrPopup({
+                    text: 'Отсканируйте QR код заведения'
+                }, async (qrData) => {
+                    tg.closeScanQrPopup();
+                    
+                    if (qrData) {
+                        console.log('QR Code scanned:', qrData);
+                        await markVisit(qrData);
+                    } else {
+                        console.log('QR scan cancelled');
+                    }
+                });
+            } catch (error) {
+                console.error('Error opening QR scanner:', error);
+                showError('Ошибка открытия сканера QR кода');
+            }
         }
 
-        // Закрытие QR сканера
-        function closeQRScanner() {
-            document.getElementById('qrScanner').classList.remove('active');
-        }
-
-        // Симуляция сканирования QR кода
-        async function simulateQRScan() {
+        // Отметка посещения
+        async function markVisit(qrData) {
             try {
                 const response = await fetch('/api/visit', {
                     method: 'POST',
@@ -495,7 +473,7 @@
                     },
                     body: JSON.stringify({
                         user_id: currentUser.id,
-                        qr_code: 'HOOKAH_PLACE_QR'
+                        qr_code: qrData
                     })
                 });
 
@@ -506,7 +484,6 @@
 
                 const result = await response.json();
                 
-                closeQRScanner();
                 showSuccess('Посещение отмечено!');
                 
                 // Обновляем данные
@@ -564,7 +541,7 @@
         }
 
         // Обработчики событий
-        document.getElementById('scanButton').addEventListener('click', openQRScanner);
+        document.getElementById('scanButton').addEventListener('click', scanQRCode);
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', initApp);

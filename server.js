@@ -49,12 +49,12 @@ db.serialize(() => {
 // API Routes
 
 // Получить информацию о пользователе
-app.get('/api/user/:telegramId', (req, res) => {
-  const telegramId = req.params.telegramId;
+app.get('/api/user/:userId', (req, res) => {
+  const userId = req.params.userId;
   
   db.get(
-    'SELECT * FROM users WHERE telegram_id = ?',
-    [telegramId],
+    'SELECT * FROM users WHERE id = ?',
+    [userId],
     (err, user) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
