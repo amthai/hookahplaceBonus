@@ -1,7 +1,15 @@
 // Debug endpoint для проверки состояния
-let users = new Map();
-let visits = new Map();
-let bonuses = new Map();
+// Используем глобальные переменные
+let globalUsers = global.users || new Map();
+let globalVisits = global.visits || new Map();
+let globalBonuses = global.bonuses || new Map();
+
+// Инициализируем глобальные переменные
+if (!global.users) {
+  global.users = globalUsers;
+  global.visits = globalVisits;
+  global.bonuses = globalBonuses;
+}
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -21,17 +29,18 @@ export default function handler(req, res) {
       NODE_ENV: process.env.NODE_ENV
     });
     
-    const usersArray = Array.from(users.values());
-    const visitsArray = Array.from(visits.values());
-    const bonusesArray = Array.from(bonuses.values());
+    const usersArray = Array.from(global.users.values());
+    const visitsArray = Array.from(global.visits.values());
+    const bonusesArray = Array.from(global.bonuses.values());
     
-    console.log('Users in memory:', usersArray);
+    console.log('Users in global memory:', usersArray);
+    console.log('Total users:', global.users.size);
     
     res.json({
       environment: {
         VERCEL: process.env.VERCEL,
         NODE_ENV: process.env.NODE_ENV,
-        databaseType: 'In-Memory (per function)'
+        databaseType: 'Global Memory (shared between functions)'
       },
       users: usersArray,
       visits: visitsArray,
@@ -39,7 +48,7 @@ export default function handler(req, res) {
       totalUsers: usersArray.length,
       totalVisits: visitsArray.length,
       totalBonuses: bonusesArray.length,
-      note: 'Each serverless function has its own memory space'
+      note: 'Using global variables to share data between serverless functions'
     });
   } else {
     res.status(405).json({ error: 'Method not allowed' });

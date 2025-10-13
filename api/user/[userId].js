@@ -1,7 +1,14 @@
-// Простое хранение в памяти для каждого endpoint
-let users = new Map();
-let visits = new Map();
-let bonuses = new Map();
+// Используем глобальные переменные для сохранения данных между запросами
+let globalUsers = global.users || new Map();
+let globalVisits = global.visits || new Map();
+let globalBonuses = global.bonuses || new Map();
+
+// Инициализируем глобальные переменные
+if (!global.users) {
+  global.users = globalUsers;
+  global.visits = globalVisits;
+  global.bonuses = globalBonuses;
+}
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -17,19 +24,26 @@ export default function handler(req, res) {
   if (req.method === 'GET') {
     const { userId } = req.query;
     
+    console.log('Getting user data for ID:', userId);
+    console.log('Total users in global:', global.users.size);
+    
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
     }
     
-    const user = users.get(parseInt(userId));
+    const user = global.users.get(parseInt(userId));
     
     if (!user) {
+      console.log('User not found with ID:', userId);
+      console.log('Available users:', Array.from(global.users.keys()));
       return res.status(404).json({ error: 'User not found' });
     }
     
+    console.log('User found:', user);
+    
     // Подсчитываем посещения
     let visitCount = 0;
-    for (let [id, visit] of visits) {
+    for (let [id, visit] of global.visits) {
       if (visit.user_id === parseInt(userId)) {
         visitCount++;
       }
@@ -37,7 +51,7 @@ export default function handler(req, res) {
     
     // Подсчитываем бонусы
     let bonusCount = 0;
-    for (let [id, bonus] of bonuses) {
+    for (let [id, bonus] of global.bonuses) {
       if (bonus.user_id === parseInt(userId) && !bonus.is_used) {
         bonusCount++;
       }

@@ -1,6 +1,17 @@
-// Простое хранение в памяти для каждого endpoint
-let users = new Map();
-let nextUserId = 1;
+// Простое хранение в памяти с глобальным состоянием
+// В реальном приложении нужно использовать внешнюю базу данных
+
+// Глобальные переменные (будут сбрасываться при каждом cold start)
+let globalUsers = global.users || new Map();
+let globalVisits = global.visits || new Map();
+let globalBonuses = global.bonuses || new Map();
+
+// Инициализируем глобальные переменные
+if (!global.users) {
+  global.users = globalUsers;
+  global.visits = globalVisits;
+  global.bonuses = globalBonuses;
+}
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -17,6 +28,7 @@ export default function handler(req, res) {
     const { telegram_id, username, first_name, last_name } = req.body;
     
     console.log('Creating user with data:', req.body);
+    console.log('Current users count:', global.users.size);
     
     if (!telegram_id) {
       return res.status(400).json({ error: 'telegram_id is required' });
@@ -24,7 +36,7 @@ export default function handler(req, res) {
     
     // Проверяем, существует ли пользователь
     let user = null;
-    for (let [id, userData] of users) {
+    for (let [id, userData] of global.users) {
       if (userData.telegram_id === telegram_id) {
         user = { id, ...userData };
         break;
@@ -33,7 +45,7 @@ export default function handler(req, res) {
     
     if (!user) {
       // Создаем нового пользователя
-      const userId = nextUserId++;
+      const userId = Date.now(); // Простой ID
       user = {
         id: userId,
         telegram_id,
@@ -42,7 +54,9 @@ export default function handler(req, res) {
         last_name: last_name || 'User',
         created_at: new Date().toISOString()
       };
-      users.set(userId, user);
+      global.users.set(userId, user);
+      console.log('User created with ID:', userId);
+      console.log('Total users now:', global.users.size);
     }
     
     console.log('User created/updated:', user);
