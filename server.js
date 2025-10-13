@@ -235,9 +235,15 @@ app.get('/api/debug', (req, res) => {
   }
 });
 
-const PORT = config.PORT;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`QR Code data: HOOKAH_PLACE_QR`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Для локальной разработки
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = config.PORT;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`QR Code data: HOOKAH_PLACE_QR`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}
+
+// Для Vercel
+module.exports = app;
