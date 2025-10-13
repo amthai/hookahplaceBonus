@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
 
 const app = express();
+console.log('Database path:', config.DATABASE_PATH);
 const db = new sqlite3.Database(config.DATABASE_PATH);
 
 // Middleware
@@ -15,6 +16,8 @@ app.use(express.static('public'));
 
 // Инициализация базы данных
 db.serialize(() => {
+  console.log('Initializing database...');
+  
   // Таблица пользователей
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +26,13 @@ db.serialize(() => {
     first_name TEXT,
     last_name TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating users table:', err);
+    } else {
+      console.log('Users table created/verified');
+    }
+  });
 
   // Таблица посещений
   db.run(`CREATE TABLE IF NOT EXISTS visits (
@@ -32,7 +41,13 @@ db.serialize(() => {
     visit_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     qr_code TEXT,
     FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating visits table:', err);
+    } else {
+      console.log('Visits table created/verified');
+    }
+  });
 
   // Таблица бонусов
   db.run(`CREATE TABLE IF NOT EXISTS bonuses (
@@ -43,7 +58,13 @@ db.serialize(() => {
     used_date DATETIME,
     is_used BOOLEAN DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating bonuses table:', err);
+    } else {
+      console.log('Bonuses table created/verified');
+    }
+  });
 });
 
 // API Routes
