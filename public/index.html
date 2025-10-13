@@ -291,26 +291,33 @@
         // Создание пользователя
         async function createUser(telegramUser) {
             console.log('Creating user:', telegramUser);
-            const response = await fetch('/api/user', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    telegram_id: telegramUser.id,
-                    username: telegramUser.username,
-                    first_name: telegramUser.first_name,
-                    last_name: telegramUser.last_name
-                })
-            });
+            try {
+                const response = await fetch('/api/user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        telegram_id: telegramUser.id,
+                        username: telegramUser.username || 'unknown',
+                        first_name: telegramUser.first_name || 'User',
+                        last_name: telegramUser.last_name || ''
+                    })
+                });
 
-            if (!response.ok) {
-                throw new Error('Ошибка создания пользователя');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('API Error:', errorData);
+                    throw new Error('Ошибка создания пользователя: ' + (errorData.error || 'Неизвестная ошибка'));
+                }
+
+                const result = await response.json();
+                currentUser = { id: result.user_id, ...telegramUser };
+                console.log('User created:', currentUser);
+            } catch (error) {
+                console.error('Error creating user:', error);
+                throw error;
             }
-
-            const result = await response.json();
-            currentUser = { id: result.user_id, ...telegramUser };
-            console.log('User created:', currentUser);
         }
 
         // Загрузка данных пользователя

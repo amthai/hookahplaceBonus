@@ -104,16 +104,23 @@ app.get('/api/user/:userId', (req, res) => {
 
 // Создать или обновить пользователя
 app.post('/api/user', (req, res) => {
+  console.log('Creating user with data:', req.body);
   const { telegram_id, username, first_name, last_name } = req.body;
+  
+  if (!telegram_id) {
+    return res.status(400).json({ error: 'telegram_id is required' });
+  }
   
   db.run(
     'INSERT OR REPLACE INTO users (telegram_id, username, first_name, last_name) VALUES (?, ?, ?, ?)',
     [telegram_id, username, first_name, last_name],
     function(err) {
       if (err) {
-        return res.status(500).json({ error: 'Database error' });
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
       }
       
+      console.log('User created/updated with ID:', this.lastID);
       res.json({ 
         message: 'User created/updated successfully',
         user_id: this.lastID 
