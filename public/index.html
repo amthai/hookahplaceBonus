@@ -503,6 +503,8 @@
         // Отметка посещения
         async function markVisit(qrData) {
             try {
+                console.log('Marking visit for user:', currentUser.id, 'with QR:', qrData);
+                
                 const response = await fetch('/api/visit', {
                     method: 'POST',
                     headers: {
@@ -514,12 +516,16 @@
                     })
                 });
 
+                console.log('Visit API response status:', response.status);
+                
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error);
+                    const errorText = await response.text();
+                    console.error('Visit API error response:', errorText);
+                    throw new Error('Ошибка отметки посещения: ' + errorText);
                 }
 
                 const result = await response.json();
+                console.log('Visit API result:', result);
                 
                 showSuccess('Посещение отмечено!');
                 

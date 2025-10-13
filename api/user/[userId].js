@@ -1,8 +1,4 @@
-// Импортируем данные из основного файла
-// В реальном приложении это было бы в базе данных
-let users = new Map();
-let visits = new Map();
-let bonuses = new Map();
+import { users, visits, bonuses } from '../data.js';
 
 export default function handler(req, res) {
   // Включаем CORS
