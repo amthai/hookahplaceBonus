@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HookahPlace Bonus</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #2481cc);
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+            margin-top: 4px;
+        }
+
+        .progress-bar {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 10px;
+            height: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: var(--tg-theme-button-color, #2481cc);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .bonus-info {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .bonus-text {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .scan-button {
+            width: 100%;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: opacity 0.2s;
+        }
+
+        .scan-button:hover {
+            opacity: 0.9;
+        }
+
+        .scan-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .visit-item {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .visit-date {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .bonus-item {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bonus-type {
+            font-weight: 600;
+        }
+
+        .bonus-status {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .success {
+            background: #4ecdc4;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .qr-scanner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .qr-scanner.active {
+            display: flex;
+        }
+
+        .scanner-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            max-width: 300px;
+            margin: 20px;
+        }
+
+        .scanner-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .scanner-button {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .close-scanner {
+            background: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚬 HookahPlace</div>
+            <div>Программа лояльности</div>
+        </div>
+
+        <div id="userInfo" class="user-info">
+            <div class="user-name" id="userName">Загрузка...</div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="visitCount">0</div>
+                    <div class="stat-label">Посещений</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="bonusCount">0</div>
+                    <div class="stat-label">Бонусов</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <div id="progressText" style="text-align: center; font-size: 14px; color: var(--tg-theme-hint-color, #999999);">
+                До бонуса: 10 посещений
+            </div>
+        </div>
+
+        <div id="bonusInfo" class="bonus-info" style="display: none;">
+            <div class="bonus-text">🎉 Поздравляем! Вы получили бонус!</div>
+        </div>
+
+        <button id="scanButton" class="scan-button">
+            📱 Отметить посещение
+        </button>
+
+        <div class="history-section">
+            <div class="section-title">История посещений</div>
+            <div id="visitHistory"></div>
+        </div>
+
+        <div class="history-section">
+            <div class="section-title">Мои бонусы</div>
+            <div id="bonusHistory"></div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="qrScanner" class="qr-scanner">
+        <div class="scanner-content">
+            <div class="scanner-title">Сканируйте QR код</div>
+            <div style="margin: 20px 0;">
+                <div id="camera" style="width: 200px; height: 200px; background: #f0f0f0; margin: 0 auto; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">
+                    📷 Камера
+                </div>
+            </div>
+            <div>
+                <button class="scanner-button" onclick="simulateQRScan()">Симулировать сканирование</button>
+                <button class="scanner-button close-scanner" onclick="closeQRScanner()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram WebApp API
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        let currentUser = null;
+        let visitHistory = [];
+        let bonusHistory = [];
+
+        // Инициализация приложения
+        async function initApp() {
+            try {
+                // Получаем данные пользователя из Telegram
+                const user = tg.initDataUnsafe?.user;
+                if (!user) {
+                    showError('Ошибка: не удалось получить данные пользователя');
+                    return;
+                }
+
+                // Создаем или обновляем пользователя
+                await createUser(user);
+                
+                // Загружаем данные пользователя
+                await loadUserData();
+                await loadVisitHistory();
+                await loadBonusHistory();
+                
+            } catch (error) {
+                console.error('Ошибка инициализации:', error);
+                showError('Ошибка загрузки данных');
+            }
+        }
+
+        // Создание пользователя
+        async function createUser(telegramUser) {
+            const response = await fetch('/api/user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    telegram_id: telegramUser.id,
+                    username: telegramUser.username,
+                    first_name: telegramUser.first_name,
+                    last_name: telegramUser.last_name
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка создания пользователя');
+            }
+
+            const result = await response.json();
+            currentUser = { id: result.user_id, ...telegramUser };
+        }
+
+        // Загрузка данных пользователя
+        async function loadUserData() {
+            const response = await fetch(`/api/user/${currentUser.id}`);
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки данных пользователя');
+            }
+
+            const data = await response.json();
+            currentUser = { ...currentUser, ...data.user };
+            
+            // Обновляем интерфейс
+            document.getElementById('userName').textContent = 
+                `${data.user.first_name} ${data.user.last_name || ''}`.trim();
+            
+            document.getElementById('visitCount').textContent = data.visits;
+            document.getElementById('bonusCount').textContent = data.bonuses;
+            
+            // Обновляем прогресс бар
+            const progress = ((data.visits % 10) / 10) * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = 
+                `До бонуса: ${data.visits_to_bonus} посещений`;
+        }
+
+        // Загрузка истории посещений
+        async function loadVisitHistory() {
+            const response = await fetch(`/api/visits/${currentUser.id}`);
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки истории посещений');
+            }
+
+            visitHistory = await response.json();
+            renderVisitHistory();
+        }
+
+        // Загрузка истории бонусов
+        async function loadBonusHistory() {
+            const response = await fetch(`/api/bonuses/${currentUser.id}`);
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки истории бонусов');
+            }
+
+            bonusHistory = await response.json();
+            renderBonusHistory();
+        }
+
+        // Отображение истории посещений
+        function renderVisitHistory() {
+            const container = document.getElementById('visitHistory');
+            container.innerHTML = '';
+
+            if (visitHistory.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--tg-theme-hint-color, #999999); padding: 20px;">Нет посещений</div>';
+                return;
+            }
+
+            visitHistory.forEach(visit => {
+                const visitElement = document.createElement('div');
+                visitElement.className = 'visit-item';
+                visitElement.innerHTML = `
+                    <div>Посещение #${visit.id}</div>
+                    <div class="visit-date">${formatDate(visit.visit_date)}</div>
+                `;
+                container.appendChild(visitElement);
+            });
+        }
+
+        // Отображение истории бонусов
+        function renderBonusHistory() {
+            const container = document.getElementById('bonusHistory');
+            container.innerHTML = '';
+
+            if (bonusHistory.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--tg-theme-hint-color, #999999); padding: 20px;">Нет бонусов</div>';
+                return;
+            }
+
+            bonusHistory.forEach(bonus => {
+                const bonusElement = document.createElement('div');
+                bonusElement.className = 'bonus-item';
+                bonusElement.innerHTML = `
+                    <div>
+                        <div class="bonus-type">${getBonusTypeText(bonus.bonus_type)}</div>
+                        <div class="bonus-status">${formatDate(bonus.earned_date)}</div>
+                    </div>
+                    <div>
+                        ${bonus.is_used ? '✅ Использован' : '⏳ Доступен'}
+                    </div>
+                `;
+                container.appendChild(bonusElement);
+            });
+        }
+
+        // Получение текста типа бонуса
+        function getBonusTypeText(type) {
+            switch (type) {
+                case 'free_visit':
+                    return 'Бесплатное посещение';
+                default:
+                    return 'Бонус';
+            }
+        }
+
+        // Форматирование даты
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Открытие QR сканера
+        function openQRScanner() {
+            document.getElementById('qrScanner').classList.add('active');
+        }
+
+        // Закрытие QR сканера
+        function closeQRScanner() {
+            document.getElementById('qrScanner').classList.remove('active');
+        }
+
+        // Симуляция сканирования QR кода
+        async function simulateQRScan() {
+            try {
+                const response = await fetch('/api/visit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        qr_code: 'HOOKAH_PLACE_QR'
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error);
+                }
+
+                const result = await response.json();
+                
+                closeQRScanner();
+                showSuccess('Посещение отмечено!');
+                
+                // Обновляем данные
+                await loadUserData();
+                await loadVisitHistory();
+                
+                // Показываем уведомление о бонусе
+                if (result.bonus_earned) {
+                    showBonusNotification();
+                }
+                
+            } catch (error) {
+                console.error('Ошибка отметки посещения:', error);
+                showError(error.message);
+            }
+        }
+
+        // Показ уведомления о бонусе
+        function showBonusNotification() {
+            const bonusInfo = document.getElementById('bonusInfo');
+            bonusInfo.style.display = 'block';
+            bonusInfo.innerHTML = '<div class="bonus-text">🎉 Поздравляем! Вы получили бонус!</div>';
+            
+            setTimeout(() => {
+                bonusInfo.style.display = 'none';
+            }, 5000);
+        }
+
+        // Показ ошибки
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(errorDiv, container.firstChild);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        // Показ успеха
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(successDiv, container.firstChild);
+            
+            setTimeout(() => {
+                successDiv.remove();
+            }, 3000);
+        }
+
+        // Обработчики событий
+        document.getElementById('scanButton').addEventListener('click', openQRScanner);
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
