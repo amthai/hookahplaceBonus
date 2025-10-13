@@ -40,9 +40,9 @@ export default function handler(req, res) {
       });
     } catch (error) {
       console.error('Debug error:', error);
-      res.status(500).json({ error: 'Debug error', details: error.message });
+      res.status(500).json({ error: 'Ошибка отладки', details: error.message });
     }
   } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Метод не разрешен' });
   }
 }

@@ -19,7 +19,7 @@ export default function handler(req, res) {
     
     // Проверяем, что QR код валидный
     if (!qr_code || qr_code !== 'HOOKAH_PLACE_QR') {
-      return res.status(400).json({ error: 'Invalid QR code' });
+      return res.status(400).json({ error: 'Неверный QR код' });
     }
     
     // Проверяем, что пользователь не отметился сегодня
@@ -48,16 +48,16 @@ export default function handler(req, res) {
       }
     
       res.json({
-        message: 'Visit recorded successfully',
+        message: 'Посещение успешно отмечено',
         visit_count: visitCount,
         bonus_earned: bonusEarned,
         visits_to_next_bonus: 10 - (visitCount % 10)
       });
     } catch (error) {
       console.error('Error recording visit:', error);
-      res.status(500).json({ error: 'Database error' });
+      res.status(500).json({ error: 'Ошибка базы данных' });
     }
   } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Метод не разрешен' });
   }
 }

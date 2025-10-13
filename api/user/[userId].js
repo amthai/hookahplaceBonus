@@ -48,9 +48,9 @@ export default function handler(req, res) {
       });
     } catch (error) {
       console.error('Error getting user data:', error);
-      res.status(500).json({ error: 'Database error' });
+      res.status(500).json({ error: 'Ошибка базы данных' });
     }
   } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Метод не разрешен' });
   }
 }

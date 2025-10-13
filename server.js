@@ -54,7 +54,7 @@ app.get('/api/user/:userId', (req, res) => {
     });
   } catch (error) {
     console.error('Error getting user data:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Ошибка базы данных' });
   }
 });
 
@@ -80,12 +80,12 @@ app.post('/api/user', (req, res) => {
     console.log('User created/found:', user);
     
     res.json({ 
-      message: 'User created/updated successfully',
+      message: 'Пользователь создан/обновлен успешно',
       user_id: user.id 
     });
   } catch (error) {
     console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Database error: ' + error.message });
+    res.status(500).json({ error: 'Ошибка базы данных: ' + error.message });
   }
 });
 
@@ -95,7 +95,7 @@ app.post('/api/visit', (req, res) => {
   
   // Проверяем, что QR код валидный (простая проверка)
   if (!qr_code || qr_code !== 'HOOKAH_PLACE_QR') {
-    return res.status(400).json({ error: 'Invalid QR code' });
+    return res.status(400).json({ error: 'Неверный QR код' });
   }
   
   try {
@@ -107,7 +107,7 @@ app.post('/api/visit', (req, res) => {
     );
     
     if (todayVisit) {
-      return res.status(400).json({ error: 'Already visited today' });
+      return res.status(400).json({ error: 'Вы уже отметили посещение сегодня! Приходите завтра для новой отметки 😊' });
     }
     
     // Добавляем посещение
@@ -129,14 +129,14 @@ app.post('/api/visit', (req, res) => {
     }
     
     res.json({
-      message: 'Visit recorded successfully',
+      message: 'Посещение успешно отмечено',
       visit_count: visitCount,
       bonus_earned: bonusEarned,
       visits_to_next_bonus: 10 - (visitCount % 10)
     });
   } catch (error) {
     console.error('Error recording visit:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Ошибка базы данных' });
   }
 });
 
@@ -149,7 +149,7 @@ app.get('/api/visits/:userId', (req, res) => {
     res.json(visits);
   } catch (error) {
     console.error('Error getting visits:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Ошибка базы данных' });
   }
 });
 
@@ -162,7 +162,7 @@ app.get('/api/bonuses/:userId', (req, res) => {
     res.json(bonuses);
   } catch (error) {
     console.error('Error getting bonuses:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Ошибка базы данных' });
   }
 });
 
@@ -180,7 +180,7 @@ app.post('/api/bonus/use/:bonusId', (req, res) => {
     res.json({ message: 'Bonus used successfully' });
   } catch (error) {
     console.error('Error using bonus:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Ошибка базы данных' });
   }
 });
 
@@ -231,7 +231,7 @@ app.get('/api/debug', (req, res) => {
     });
   } catch (error) {
     console.error('Debug error:', error);
-    res.status(500).json({ error: 'Debug error', details: error.message });
+    res.status(500).json({ error: 'Ошибка отладки', details: error.message });
   }
 });
 

@@ -31,14 +31,14 @@ export default function handler(req, res) {
       
       console.log('User created/found:', user);
       res.json({ 
-        message: 'User created/updated successfully',
+        message: 'Пользователь создан/обновлен успешно',
         user_id: user.id 
       });
     } catch (error) {
       console.error('Error creating user:', error);
-      res.status(500).json({ error: 'Database error: ' + error.message });
+      res.status(500).json({ error: 'Ошибка базы данных: ' + error.message });
     }
   } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Метод не разрешен' });
   }
 }
