@@ -353,6 +353,35 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
+// Debug endpoint для проверки состояния
+app.get('/api/debug', (req, res) => {
+  console.log('=== DEBUG REQUEST ===');
+  console.log('Environment:', {
+    VERCEL: process.env.VERCEL,
+    NODE_ENV: process.env.NODE_ENV,
+    DATABASE_PATH: config.DATABASE_PATH
+  });
+  
+  // Проверим, что в базе данных
+  db.all('SELECT * FROM users', (err, users) => {
+    if (err) {
+      console.error('Debug database error:', err);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    console.log('Users in database:', users);
+    res.json({
+      environment: {
+        VERCEL: process.env.VERCEL,
+        NODE_ENV: process.env.NODE_ENV,
+        DATABASE_PATH: config.DATABASE_PATH
+      },
+      users: users,
+      totalUsers: users.length
+    });
+  });
+});
+
 const PORT = config.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
