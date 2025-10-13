@@ -353,28 +353,47 @@
                 return;
             }
             
-            const response = await fetch(`/api/user/${currentUser.id}`);
-            if (!response.ok) {
-                throw new Error('Ошибка загрузки данных пользователя');
-            }
+            console.log('Loading user data for user ID:', currentUser.id);
+            
+            try {
+                const response = await fetch(`/api/user/${currentUser.id}`);
+                console.log('User data API response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('User data API error:', errorText);
+                    throw new Error('Ошибка загрузки данных пользователя: ' + errorText);
+                }
 
-            const data = await response.json();
-            currentUser = { ...currentUser, ...data.user };
-            
-            // Обновляем интерфейс
-            const userName = `${data.user.first_name} ${data.user.last_name || ''}`.trim() || 
-                           data.user.username || 
-                           'Пользователь';
-            document.getElementById('userName').textContent = userName;
-            
-            document.getElementById('visitCount').textContent = data.visits;
-            document.getElementById('bonusCount').textContent = data.bonuses;
-            
-            // Обновляем прогресс бар
-            const progress = ((data.visits % 10) / 10) * 100;
-            document.getElementById('progressFill').style.width = `${progress}%`;
-            document.getElementById('progressText').textContent = 
-                `До бонуса: ${data.visits_to_bonus} посещений`;
+                const data = await response.json();
+                console.log('User data API response:', data);
+                
+                currentUser = { ...currentUser, ...data.user };
+                
+                // Обновляем интерфейс
+                const userName = `${data.user.first_name} ${data.user.last_name || ''}`.trim() || 
+                               data.user.username || 
+                               'Пользователь';
+                document.getElementById('userName').textContent = userName;
+                
+                document.getElementById('visitCount').textContent = data.visits;
+                document.getElementById('bonusCount').textContent = data.bonuses;
+                
+                // Обновляем прогресс бар
+                const progress = ((data.visits % 10) / 10) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('progressText').textContent = 
+                    `До бонуса: ${data.visits_to_bonus} посещений`;
+                    
+                console.log('User data loaded successfully:', {
+                    name: userName,
+                    visits: data.visits,
+                    bonuses: data.bonuses
+                });
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                throw error;
+            }
         }
 
         // Загрузка истории посещений
