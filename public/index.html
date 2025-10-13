@@ -243,9 +243,15 @@
 
     <script>
         // Telegram WebApp API
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            console.log('Telegram WebApp initialized');
+        } else {
+            console.warn('Telegram WebApp not available - running in demo mode');
+        }
 
         let currentUser = null;
         let visitHistory = [];
@@ -255,17 +261,28 @@
         async function initApp() {
             try {
                 console.log('Initializing app...');
+                console.log('Telegram WebApp available:', !!window.Telegram?.WebApp);
+                console.log('Telegram initDataUnsafe:', tg.initDataUnsafe);
                 
-                // Создаем тестового пользователя для демонстрации
-                const testUser = {
-                    id: Math.floor(Math.random() * 1000000) + 100000,
-                    username: 'demo_user',
-                    first_name: 'Demo',
-                    last_name: 'User'
-                };
+                // Получаем данные пользователя из Telegram
+                const telegramUser = tg.initDataUnsafe?.user;
+                console.log('Telegram user data:', telegramUser);
                 
-                console.log('Creating demo user:', testUser);
-                await createUser(testUser);
+                if (telegramUser) {
+                    // Используем реальные данные пользователя из Telegram
+                    console.log('Using real Telegram user:', telegramUser);
+                    await createUser(telegramUser);
+                } else {
+                    // Fallback: создаем демо-пользователя
+                    console.log('No Telegram user data, creating demo user');
+                    const demoUser = {
+                        id: Math.floor(Math.random() * 1000000) + 100000,
+                        username: 'demo_user',
+                        first_name: 'Demo',
+                        last_name: 'User'
+                    };
+                    await createUser(demoUser);
+                }
                 
                 // Загружаем данные пользователя
                 await loadUserData();
@@ -345,8 +362,10 @@
             currentUser = { ...currentUser, ...data.user };
             
             // Обновляем интерфейс
-            document.getElementById('userName').textContent = 
-                `${data.user.first_name} ${data.user.last_name || ''}`.trim();
+            const userName = `${data.user.first_name} ${data.user.last_name || ''}`.trim() || 
+                           data.user.username || 
+                           'Пользователь';
+            document.getElementById('userName').textContent = userName;
             
             document.getElementById('visitCount').textContent = data.visits;
             document.getElementById('bonusCount').textContent = data.bonuses;
@@ -471,8 +490,9 @@
 
             try {
                 // Проверяем, доступен ли сканер Telegram
-                if (tg.showScanQrPopup) {
+                if (tg && tg.showScanQrPopup) {
                     // Используем встроенный сканер Telegram
+                    console.log('Using Telegram QR scanner');
                     tg.showScanQrPopup({
                         text: 'Отсканируйте QR код заведения'
                     }, async (qrData) => {
