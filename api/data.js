@@ -1,7 +1,9 @@
 // Глобальное хранилище данных
 // В реальном приложении это было бы в базе данных
 
-// Используем глобальные переменные для синхронизации между API endpoints
+// Инициализируем хранилище данных
+let users, visits, bonuses, nextUserId, nextVisitId, nextBonusId;
+
 if (typeof global !== 'undefined') {
   // Node.js environment
   if (!global.hookahplaceData) {
@@ -14,7 +16,12 @@ if (typeof global !== 'undefined') {
       nextBonusId: 1
     };
   }
-  var { users, visits, bonuses, nextUserId, nextVisitId, nextBonusId } = global.hookahplaceData;
+  users = global.hookahplaceData.users;
+  visits = global.hookahplaceData.visits;
+  bonuses = global.hookahplaceData.bonuses;
+  nextUserId = global.hookahplaceData.nextUserId;
+  nextVisitId = global.hookahplaceData.nextVisitId;
+  nextBonusId = global.hookahplaceData.nextBonusId;
 } else {
   // Browser environment - fallback
   if (!window.hookahplaceData) {
@@ -27,7 +34,12 @@ if (typeof global !== 'undefined') {
       nextBonusId: 1
     };
   }
-  var { users, visits, bonuses, nextUserId, nextVisitId, nextBonusId } = window.hookahplaceData;
+  users = window.hookahplaceData.users;
+  visits = window.hookahplaceData.visits;
+  bonuses = window.hookahplaceData.bonuses;
+  nextUserId = window.hookahplaceData.nextUserId;
+  nextVisitId = window.hookahplaceData.nextVisitId;
+  nextBonusId = window.hookahplaceData.nextBonusId;
 }
 
 export { users, visits, bonuses, nextUserId, nextVisitId, nextBonusId };
