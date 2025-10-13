@@ -300,6 +300,7 @@
                 });
 
                 console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -309,8 +310,19 @@
 
                 const result = await response.json();
                 console.log('User creation result:', result);
+                
+                if (!result.user_id) {
+                    throw new Error('Не получен user_id от сервера');
+                }
+                
                 currentUser = { id: result.user_id, ...telegramUser };
                 console.log('User created successfully:', currentUser);
+                
+                // Проверяем, что currentUser установлен
+                if (!currentUser || !currentUser.id) {
+                    throw new Error('currentUser не установлен правильно');
+                }
+                
             } catch (error) {
                 console.error('Error creating user:', error);
                 throw error;
@@ -449,8 +461,11 @@
 
         // Реальное сканирование QR кода
         async function scanQRCode() {
-            if (!currentUser) {
-                showError('Ошибка: пользователь не определен');
+            console.log('scanQRCode called, currentUser:', currentUser);
+            
+            if (!currentUser || !currentUser.id) {
+                console.error('currentUser is not defined or has no id:', currentUser);
+                showError('Ошибка: пользователь не определен. Попробуйте перезагрузить приложение.');
                 return;
             }
 
