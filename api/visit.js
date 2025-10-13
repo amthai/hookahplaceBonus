@@ -37,7 +37,7 @@ export default function handler(req, res) {
     }
     
     if (alreadyVisited) {
-      return res.status(400).json({ error: 'Already visited today' });
+      return res.status(400).json({ error: 'Вы уже отметили посещение сегодня! Приходите завтра для новой отметки 😊' });
     }
     
     // Добавляем посещение

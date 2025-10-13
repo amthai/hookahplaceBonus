@@ -591,13 +591,20 @@
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('Visit API error response:', errorText);
+                    
+                    // Специальная обработка для "уже отмечен сегодня"
+                    if (errorText.includes('уже отметили посещение сегодня')) {
+                        showError('Вы уже отметили посещение сегодня! Приходите завтра для новой отметки 😊');
+                        return;
+                    }
+                    
                     throw new Error('Ошибка отметки посещения: ' + errorText);
                 }
 
                 const result = await response.json();
                 console.log('Visit API result:', result);
                 
-                showSuccess('Посещение отмечено!');
+                showSuccess('🎉 Посещение успешно отмечено!');
                 
                 // Обновляем данные
                 await loadUserData();
@@ -618,7 +625,7 @@
         function showBonusNotification() {
             const bonusInfo = document.getElementById('bonusInfo');
             bonusInfo.style.display = 'block';
-            bonusInfo.innerHTML = '<div class="bonus-text">🎉 Поздравляем! Вы получили бонус!</div>';
+            bonusInfo.innerHTML = '<div class="bonus-text">🎉 Поздравляем! Вы получили бонус за 10 посещений!</div>';
             
             setTimeout(() => {
                 bonusInfo.style.display = 'none';
