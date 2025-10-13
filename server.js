@@ -119,22 +119,43 @@ app.post('/api/user', (req, res) => {
   
   console.log('Inserting user with telegram_id:', telegram_id);
   
-  db.run(
-    'INSERT OR REPLACE INTO users (telegram_id, username, first_name, last_name) VALUES (?, ?, ?, ?)',
-    [telegram_id, username, first_name, last_name],
-    function(err) {
+  // Сначала проверим, существует ли пользователь
+  db.get(
+    'SELECT * FROM users WHERE telegram_id = ?',
+    [telegram_id],
+    (err, existingUser) => {
       if (err) {
-        console.error('Database error:', err);
+        console.error('Error checking existing user:', err);
         return res.status(500).json({ error: 'Database error: ' + err.message });
       }
       
-      console.log('User created/updated with ID:', this.lastID);
-      console.log('User created/updated with changes:', this.changes);
+      if (existingUser) {
+        console.log('User already exists with ID:', existingUser.id);
+        return res.json({ 
+          message: 'User already exists',
+          user_id: existingUser.id 
+        });
+      }
       
-      res.json({ 
-        message: 'User created/updated successfully',
-        user_id: this.lastID 
-      });
+      // Создаем нового пользователя
+      db.run(
+        'INSERT INTO users (telegram_id, username, first_name, last_name) VALUES (?, ?, ?, ?)',
+        [telegram_id, username, first_name, last_name],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error: ' + err.message });
+          }
+          
+          console.log('User created with ID:', this.lastID);
+          console.log('User created with changes:', this.changes);
+          
+          res.json({ 
+            message: 'User created successfully',
+            user_id: this.lastID 
+          });
+        }
+      );
     }
   );
 });

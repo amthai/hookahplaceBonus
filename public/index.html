@@ -314,6 +314,7 @@
                 };
                 
                 console.log('Sending user data:', userData);
+                console.log('API endpoint:', '/api/user');
                 
                 const response = await fetch('/api/user', {
                     method: 'POST',
@@ -324,11 +325,12 @@
                 });
 
                 console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
+                console.log('Response ok:', response.ok);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('API Error Response:', errorText);
+                    console.error('Response status:', response.status);
                     throw new Error('Ошибка создания пользователя: ' + errorText);
                 }
 
@@ -336,6 +338,7 @@
                 console.log('User creation result:', result);
                 
                 if (!result.user_id) {
+                    console.error('No user_id in result:', result);
                     throw new Error('Не получен user_id от сервера');
                 }
                 
@@ -349,9 +352,11 @@
                 };
                 
                 console.log('User created successfully:', currentUser);
+                console.log('currentUser.id:', currentUser.id);
                 
                 // Дополнительная проверка
                 if (!currentUser || !currentUser.id) {
+                    console.error('currentUser validation failed:', currentUser);
                     throw new Error('currentUser не установлен правильно');
                 }
                 
@@ -359,6 +364,7 @@
                 
             } catch (error) {
                 console.error('Error creating user:', error);
+                console.error('Error stack:', error.stack);
                 throw error;
             }
         }
