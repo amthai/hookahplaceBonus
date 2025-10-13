@@ -1,9 +1,14 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+// Используем глобальные переменные для сохранения данных между запросами
+let globalUsers = global.users || new Map();
+let globalVisits = global.visits || new Map();
+let globalBonuses = global.bonuses || new Map();
 
-// Создаем путь к базе данных
-const dbPath = path.join(process.cwd(), 'database.sqlite');
-const db = new sqlite3.Database(dbPath);
+// Инициализируем глобальные переменные
+if (!global.users) {
+  global.users = globalUsers;
+  global.visits = globalVisits;
+  global.bonuses = globalBonuses;
+}
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -23,18 +28,16 @@ export default function handler(req, res) {
       return res.status(400).json({ error: 'User ID is required' });
     }
     
-    db.all(
-      'SELECT * FROM bonuses WHERE user_id = ? ORDER BY earned_date DESC',
-      [userId],
-      (err, bonuses) => {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        res.json(bonuses);
-      }
-    );
+    try {
+      const bonuses = Array.from(global.bonuses.values())
+        .filter(bonus => bonus.user_id === parseInt(userId))
+        .sort((a, b) => new Date(b.earned_date) - new Date(a.earned_date));
+      
+      res.json(bonuses);
+    } catch (error) {
+      console.error('Error getting bonuses:', error);
+      res.status(500).json({ error: 'Database error' });
+    }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }

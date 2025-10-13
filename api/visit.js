@@ -1,8 +1,22 @@
-// Простое хранение в памяти для каждого endpoint
-let visits = new Map();
-let bonuses = new Map();
-let nextVisitId = 1;
-let nextBonusId = 1;
+// Используем глобальные переменные для сохранения данных между запросами
+let globalUsers = global.users || new Map();
+let globalVisits = global.visits || new Map();
+let globalBonuses = global.bonuses || new Map();
+
+// Инициализируем глобальные переменные
+if (!global.users) {
+  global.users = globalUsers;
+  global.visits = globalVisits;
+  global.bonuses = globalBonuses;
+}
+
+let nextVisitId = global.nextVisitId || 1;
+let nextBonusId = global.nextBonusId || 1;
+
+if (!global.nextVisitId) {
+  global.nextVisitId = nextVisitId;
+  global.nextBonusId = nextBonusId;
+}
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -29,7 +43,7 @@ export default function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
     let alreadyVisited = false;
     
-    for (let [id, visit] of visits) {
+    for (let [id, visit] of global.visits) {
       if (visit.user_id === parseInt(user_id) && visit.visit_date.startsWith(today)) {
         alreadyVisited = true;
         break;
@@ -41,18 +55,18 @@ export default function handler(req, res) {
     }
     
     // Добавляем посещение
-    const visitId = nextVisitId++;
+    const visitId = global.nextVisitId++;
     const visit = {
       id: visitId,
       user_id: parseInt(user_id),
       visit_date: new Date().toISOString(),
       qr_code: qr_code
     };
-    visits.set(visitId, visit);
+    global.visits.set(visitId, visit);
     
     // Подсчитываем общее количество посещений
     let visitCount = 0;
-    for (let [id, v] of visits) {
+    for (let [id, v] of global.visits) {
       if (v.user_id === parseInt(user_id)) {
         visitCount++;
       }
@@ -61,7 +75,7 @@ export default function handler(req, res) {
     // Проверяем, нужно ли дать бонус
     let bonusEarned = false;
     if (visitCount % 10 === 0 && visitCount > 0) {
-      const bonusId = nextBonusId++;
+      const bonusId = global.nextBonusId++;
       const bonus = {
         id: bonusId,
         user_id: parseInt(user_id),
@@ -69,7 +83,7 @@ export default function handler(req, res) {
         earned_date: new Date().toISOString(),
         is_used: false
       };
-      bonuses.set(bonusId, bonus);
+      global.bonuses.set(bonusId, bonus);
       bonusEarned = true;
     }
     
