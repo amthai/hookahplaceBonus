@@ -3,13 +3,23 @@ const cors = require('cors');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
-const SimpleDB = require('./simple-db');
 
-const app = express();
-console.log('Using SimpleDB instead of SQLite');
+// Используем Supabase PostgreSQL
+const PostgresDB = require('./lib/postgres-db');
+let db;
+
+try {
+  db = new PostgresDB();
+  console.log('Using Supabase PostgreSQL database');
+} catch (error) {
+  console.error('Failed to connect to Supabase:', error.message);
+  process.exit(1);
+}
+
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Vercel:', process.env.VERCEL);
-const db = new SimpleDB();
+
+const app = express();
 
 // Middleware
 app.use(cors());
@@ -17,18 +27,18 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Инициализация базы данных
-console.log('SimpleDB initialized');
+console.log('Supabase PostgreSQL initialized');
 
 // API Routes
 
 // Получить информацию о пользователе
-app.get('/api/user/:userId', (req, res) => {
+app.get('/api/user/:userId', async (req, res) => {
   const userId = parseInt(req.params.userId);
   console.log('=== USER DATA REQUEST ===');
   console.log('Getting user data for ID:', userId);
   
   try {
-    const user = db.getUserById(userId);
+    const user = await db.getUserById(userId);
     
     if (!user) {
       console.log('User not found with ID:', userId);
@@ -37,8 +47,8 @@ app.get('/api/user/:userId', (req, res) => {
     
     console.log('User found:', user);
     
-    const visitCount = db.getVisitCount(userId);
-    const bonusCount = db.getBonusCount(userId);
+    const visitCount = await db.getVisitCount(userId);
+    const bonusCount = await db.getBonusCount(userId);
     
     res.json({
       user: {
@@ -59,7 +69,7 @@ app.get('/api/user/:userId', (req, res) => {
 });
 
 // Создать или обновить пользователя
-app.post('/api/user', (req, res) => {
+app.post('/api/user', async (req, res) => {
   console.log('=== USER CREATION REQUEST ===');
   console.log('Creating user with data:', req.body);
   const { telegram_id, username, first_name, last_name } = req.body;
@@ -70,7 +80,7 @@ app.post('/api/user', (req, res) => {
   }
   
   try {
-    const user = db.createUser({
+    const user = await db.createUser({
       telegram_id: parseInt(telegram_id),
       username: username || 'user',
       first_name: first_name || 'User',
@@ -90,7 +100,7 @@ app.post('/api/user', (req, res) => {
 });
 
 // Отметить посещение
-app.post('/api/visit', (req, res) => {
+app.post('/api/visit', async (req, res) => {
   const { user_id, qr_code } = req.body;
   
   // Проверяем, что QR код валидный (простая проверка)
@@ -100,28 +110,24 @@ app.post('/api/visit', (req, res) => {
   
   try {
     // Проверяем, что пользователь не отметился сегодня
-    const today = new Date().toISOString().split('T')[0];
-    const visits = db.getVisitsByUserId(user_id);
-    const todayVisit = visits.find(visit => 
-      visit.visit_date.startsWith(today)
-    );
+    const hasVisitedToday = await db.hasVisitedToday(user_id);
     
-    if (todayVisit) {
+    if (hasVisitedToday) {
       return res.status(400).json({ error: 'Вы уже отметили посещение сегодня! Приходите завтра для новой отметки 😊' });
     }
     
     // Добавляем посещение
-    const visit = db.createVisit({
+    const visit = await db.createVisit({
       user_id: user_id,
       qr_code: qr_code
     });
     
-    const visitCount = db.getVisitCount(user_id);
+    const visitCount = await db.getVisitCount(user_id);
     let bonusEarned = false;
     
     // Если количество посещений кратно 10, даем бонус
     if (visitCount % 10 === 0 && visitCount > 0) {
-      db.createBonus({
+      await db.createBonus({
         user_id: user_id,
         bonus_type: 'free_visit'
       });
@@ -141,11 +147,11 @@ app.post('/api/visit', (req, res) => {
 });
 
 // Получить историю посещений
-app.get('/api/visits/:userId', (req, res) => {
+app.get('/api/visits/:userId', async (req, res) => {
   const userId = parseInt(req.params.userId);
   
   try {
-    const visits = db.getVisitsByUserId(userId);
+    const visits = await db.getVisitsByUserId(userId);
     res.json(visits);
   } catch (error) {
     console.error('Error getting visits:', error);
@@ -154,11 +160,11 @@ app.get('/api/visits/:userId', (req, res) => {
 });
 
 // Получить бонусы пользователя
-app.get('/api/bonuses/:userId', (req, res) => {
+app.get('/api/bonuses/:userId', async (req, res) => {
   const userId = parseInt(req.params.userId);
   
   try {
-    const bonuses = db.getBonusesByUserId(userId);
+    const bonuses = await db.getBonusesByUserId(userId);
     res.json(bonuses);
   } catch (error) {
     console.error('Error getting bonuses:', error);
@@ -167,11 +173,11 @@ app.get('/api/bonuses/:userId', (req, res) => {
 });
 
 // Использовать бонус
-app.post('/api/bonus/use/:bonusId', (req, res) => {
+app.post('/api/bonus/use/:bonusId', async (req, res) => {
   const bonusId = parseInt(req.params.bonusId);
   
   try {
-    const success = db.useBonus(bonusId);
+    const success = await db.useBonus(bonusId);
     
     if (!success) {
       return res.status(400).json({ error: 'Bonus not found or already used' });
@@ -203,31 +209,26 @@ app.get('/', (req, res) => {
 });
 
 // Debug endpoint для проверки состояния
-app.get('/api/debug', (req, res) => {
+app.get('/api/debug', async (req, res) => {
   console.log('=== DEBUG REQUEST ===');
   console.log('Environment:', {
     VERCEL: process.env.VERCEL,
-    NODE_ENV: process.env.NODE_ENV
+    NODE_ENV: process.env.NODE_ENV,
+    POSTGRES_URL: process.env.POSTGRES_URL ? 'Set' : 'Not set'
   });
   
   try {
-    const users = db.data.users;
-    const visits = db.data.visits;
-    const bonuses = db.data.bonuses;
+    const allData = await db.getAllData();
     
-    console.log('Users in database:', users);
+    console.log('Database data:', allData);
     res.json({
       environment: {
         VERCEL: process.env.VERCEL,
         NODE_ENV: process.env.NODE_ENV,
-        databaseType: 'SimpleDB'
+        databaseType: 'Supabase PostgreSQL',
+        postgresConnected: true
       },
-      users: users,
-      visits: visits,
-      bonuses: bonuses,
-      totalUsers: users.length,
-      totalVisits: visits.length,
-      totalBonuses: bonuses.length
+      ...allData
     });
   } catch (error) {
     console.error('Debug error:', error);
