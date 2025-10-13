@@ -7,6 +7,8 @@ const config = require('./config');
 
 const app = express();
 console.log('Database path:', config.DATABASE_PATH);
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Vercel:', process.env.VERCEL);
 const db = new sqlite3.Database(config.DATABASE_PATH);
 
 // Middleware
@@ -72,7 +74,13 @@ db.serialize(() => {
 // Получить информацию о пользователе
 app.get('/api/user/:userId', (req, res) => {
   const userId = req.params.userId;
+  console.log('=== USER DATA REQUEST ===');
   console.log('Getting user data for ID:', userId);
+  console.log('Environment variables:', {
+    VERCEL: process.env.VERCEL,
+    NODE_ENV: process.env.NODE_ENV,
+    DATABASE_PATH: config.DATABASE_PATH
+  });
   
   db.get(
     'SELECT * FROM users WHERE id = ?',
@@ -130,7 +138,14 @@ app.get('/api/user/:userId', (req, res) => {
 
 // Создать или обновить пользователя
 app.post('/api/user', (req, res) => {
+  console.log('=== USER CREATION REQUEST ===');
   console.log('Creating user with data:', req.body);
+  console.log('Request headers:', req.headers);
+  console.log('Environment variables:', {
+    VERCEL: process.env.VERCEL,
+    NODE_ENV: process.env.NODE_ENV,
+    DATABASE_PATH: config.DATABASE_PATH
+  });
   const { telegram_id, username, first_name, last_name } = req.body;
   
   if (!telegram_id) {
