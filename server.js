@@ -171,6 +171,19 @@ app.post('/api/user', (req, res) => {
           console.log('User created with ID:', this.lastID);
           console.log('User created with changes:', this.changes);
           
+          // Проверим, что пользователь действительно создался
+          db.get(
+            'SELECT * FROM users WHERE id = ?',
+            [this.lastID],
+            (err, newUser) => {
+              if (err) {
+                console.error('Error verifying user creation:', err);
+              } else {
+                console.log('User verification:', newUser);
+              }
+            }
+          );
+          
           res.json({ 
             message: 'User created successfully',
             user_id: this.lastID 
