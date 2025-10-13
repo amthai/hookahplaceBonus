@@ -1,15 +1,5 @@
 // Debug endpoint для проверки состояния
-// Используем глобальные переменные
-let globalUsers = global.users || new Map();
-let globalVisits = global.visits || new Map();
-let globalBonuses = global.bonuses || new Map();
-
-// Инициализируем глобальные переменные
-if (!global.users) {
-  global.users = globalUsers;
-  global.visits = globalVisits;
-  global.bonuses = globalBonuses;
-}
+import { getAllData } from '../../lib/data-store.js';
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -29,27 +19,29 @@ export default function handler(req, res) {
       NODE_ENV: process.env.NODE_ENV
     });
     
-    const usersArray = Array.from(global.users.values());
-    const visitsArray = Array.from(global.visits.values());
-    const bonusesArray = Array.from(global.bonuses.values());
-    
-    console.log('Users in global memory:', usersArray);
-    console.log('Total users:', global.users.size);
-    
-    res.json({
-      environment: {
-        VERCEL: process.env.VERCEL,
-        NODE_ENV: process.env.NODE_ENV,
-        databaseType: 'Global Memory (shared between functions)'
-      },
-      users: usersArray,
-      visits: visitsArray,
-      bonuses: bonusesArray,
-      totalUsers: usersArray.length,
-      totalVisits: visitsArray.length,
-      totalBonuses: bonusesArray.length,
-      note: 'Using global variables to share data between serverless functions'
-    });
+    try {
+      const data = getAllData();
+      
+      console.log('Data from file storage:', data);
+      
+      res.json({
+        environment: {
+          VERCEL: process.env.VERCEL,
+          NODE_ENV: process.env.NODE_ENV,
+          databaseType: 'File Storage (/tmp/hookahplace-data.json)'
+        },
+        users: data.users,
+        visits: data.visits,
+        bonuses: data.bonuses,
+        totalUsers: data.totalUsers,
+        totalVisits: data.totalVisits,
+        totalBonuses: data.totalBonuses,
+        note: 'Using file storage to persist data between serverless functions'
+      });
+    } catch (error) {
+      console.error('Debug error:', error);
+      res.status(500).json({ error: 'Debug error', details: error.message });
+    }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }

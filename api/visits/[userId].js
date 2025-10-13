@@ -1,14 +1,5 @@
-// Используем глобальные переменные для сохранения данных между запросами
-let globalUsers = global.users || new Map();
-let globalVisits = global.visits || new Map();
-let globalBonuses = global.bonuses || new Map();
-
-// Инициализируем глобальные переменные
-if (!global.users) {
-  global.users = globalUsers;
-  global.visits = globalVisits;
-  global.bonuses = globalBonuses;
-}
+// Используем файловое хранилище данных
+import { getVisitsByUserId } from '../../../lib/data-store.js';
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -29,10 +20,7 @@ export default function handler(req, res) {
     }
     
     try {
-      const visits = Array.from(global.visits.values())
-        .filter(visit => visit.user_id === parseInt(userId))
-        .sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
-      
+      const visits = getVisitsByUserId(parseInt(userId));
       res.json(visits);
     } catch (error) {
       console.error('Error getting visits:', error);
