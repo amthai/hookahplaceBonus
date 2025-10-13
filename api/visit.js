@@ -1,4 +1,8 @@
-import { visits, bonuses, incrementVisitId, incrementBonusId } from './data.js';
+// Простое хранение в памяти для каждого endpoint
+let visits = new Map();
+let bonuses = new Map();
+let nextVisitId = 1;
+let nextBonusId = 1;
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -37,7 +41,7 @@ export default function handler(req, res) {
     }
     
     // Добавляем посещение
-    const visitId = incrementVisitId();
+    const visitId = nextVisitId++;
     const visit = {
       id: visitId,
       user_id: parseInt(user_id),
@@ -57,7 +61,7 @@ export default function handler(req, res) {
     // Проверяем, нужно ли дать бонус
     let bonusEarned = false;
     if (visitCount % 10 === 0 && visitCount > 0) {
-      const bonusId = incrementBonusId();
+      const bonusId = nextBonusId++;
       const bonus = {
         id: bonusId,
         user_id: parseInt(user_id),

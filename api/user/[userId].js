@@ -1,4 +1,7 @@
-import { users, visits, bonuses } from '../data.js';
+// Простое хранение в памяти для каждого endpoint
+let users = new Map();
+let visits = new Map();
+let bonuses = new Map();
 
 export default function handler(req, res) {
   // Включаем CORS

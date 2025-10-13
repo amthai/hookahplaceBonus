@@ -1,4 +1,6 @@
-import { users, incrementUserId } from './data.js';
+// Простое хранение в памяти для каждого endpoint
+let users = new Map();
+let nextUserId = 1;
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -31,7 +33,7 @@ export default function handler(req, res) {
     
     if (!user) {
       // Создаем нового пользователя
-      const userId = incrementUserId();
+      const userId = nextUserId++;
       user = {
         id: userId,
         telegram_id,
