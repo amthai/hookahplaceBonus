@@ -1,15 +1,15 @@
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
+const SimpleDB = require('./simple-db');
 
 const app = express();
-console.log('Database path:', config.DATABASE_PATH);
+console.log('Using SimpleDB instead of SQLite');
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Vercel:', process.env.VERCEL);
-const db = new sqlite3.Database(config.DATABASE_PATH);
+const db = new SimpleDB();
 
 // Middleware
 app.use(cors());
@@ -17,135 +17,51 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Инициализация базы данных
-db.serialize(() => {
-  console.log('Initializing database...');
-  
-  // Таблица пользователей
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_id INTEGER UNIQUE,
-    username TEXT,
-    first_name TEXT,
-    last_name TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating users table:', err);
-    } else {
-      console.log('Users table created/verified');
-    }
-  });
-
-  // Таблица посещений
-  db.run(`CREATE TABLE IF NOT EXISTS visits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    visit_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    qr_code TEXT,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating visits table:', err);
-    } else {
-      console.log('Visits table created/verified');
-    }
-  });
-
-  // Таблица бонусов
-  db.run(`CREATE TABLE IF NOT EXISTS bonuses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    bonus_type TEXT DEFAULT 'free_visit',
-    earned_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    used_date DATETIME,
-    is_used BOOLEAN DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating bonuses table:', err);
-    } else {
-      console.log('Bonuses table created/verified');
-    }
-  });
-});
+console.log('SimpleDB initialized');
 
 // API Routes
 
 // Получить информацию о пользователе
 app.get('/api/user/:userId', (req, res) => {
-  const userId = req.params.userId;
+  const userId = parseInt(req.params.userId);
   console.log('=== USER DATA REQUEST ===');
   console.log('Getting user data for ID:', userId);
-  console.log('Environment variables:', {
-    VERCEL: process.env.VERCEL,
-    NODE_ENV: process.env.NODE_ENV,
-    DATABASE_PATH: config.DATABASE_PATH
-  });
   
-  db.get(
-    'SELECT * FROM users WHERE id = ?',
-    [userId],
-    (err, user) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      if (!user) {
-        console.log('User not found with ID:', userId);
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      console.log('User found:', user);
-      
-      // Получаем количество посещений
-      db.get(
-        'SELECT COUNT(*) as visit_count FROM visits WHERE user_id = ?',
-        [user.id],
-        (err, visitData) => {
-          if (err) {
-            return res.status(500).json({ error: 'Database error' });
-          }
-          
-          // Получаем количество неиспользованных бонусов
-          db.get(
-            'SELECT COUNT(*) as bonus_count FROM bonuses WHERE user_id = ? AND is_used = 0',
-            [user.id],
-            (err, bonusData) => {
-              if (err) {
-                return res.status(500).json({ error: 'Database error' });
-              }
-              
-              res.json({
-                user: {
-                  id: user.id,
-                  telegram_id: user.telegram_id,
-                  username: user.username,
-                  first_name: user.first_name,
-                  last_name: user.last_name
-                },
-                visits: visitData.visit_count,
-                bonuses: bonusData.bonus_count,
-                visits_to_bonus: 10 - (visitData.visit_count % 10)
-              });
-            }
-          );
-        }
-      );
+  try {
+    const user = db.getUserById(userId);
+    
+    if (!user) {
+      console.log('User not found with ID:', userId);
+      return res.status(404).json({ error: 'User not found' });
     }
-  );
+    
+    console.log('User found:', user);
+    
+    const visitCount = db.getVisitCount(userId);
+    const bonusCount = db.getBonusCount(userId);
+    
+    res.json({
+      user: {
+        id: user.id,
+        telegram_id: user.telegram_id,
+        username: user.username,
+        first_name: user.first_name,
+        last_name: user.last_name
+      },
+      visits: visitCount,
+      bonuses: bonusCount,
+      visits_to_bonus: 10 - (visitCount % 10)
+    });
+  } catch (error) {
+    console.error('Error getting user data:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Создать или обновить пользователя
 app.post('/api/user', (req, res) => {
   console.log('=== USER CREATION REQUEST ===');
   console.log('Creating user with data:', req.body);
-  console.log('Request headers:', req.headers);
-  console.log('Environment variables:', {
-    VERCEL: process.env.VERCEL,
-    NODE_ENV: process.env.NODE_ENV,
-    DATABASE_PATH: config.DATABASE_PATH
-  });
   const { telegram_id, username, first_name, last_name } = req.body;
   
   if (!telegram_id) {
@@ -153,60 +69,24 @@ app.post('/api/user', (req, res) => {
     return res.status(400).json({ error: 'telegram_id is required' });
   }
   
-  console.log('Inserting user with telegram_id:', telegram_id);
-  
-  // Сначала проверим, существует ли пользователь
-  db.get(
-    'SELECT * FROM users WHERE telegram_id = ?',
-    [telegram_id],
-    (err, existingUser) => {
-      if (err) {
-        console.error('Error checking existing user:', err);
-        return res.status(500).json({ error: 'Database error: ' + err.message });
-      }
-      
-      if (existingUser) {
-        console.log('User already exists with ID:', existingUser.id);
-        return res.json({ 
-          message: 'User already exists',
-          user_id: existingUser.id 
-        });
-      }
-      
-      // Создаем нового пользователя
-      db.run(
-        'INSERT INTO users (telegram_id, username, first_name, last_name) VALUES (?, ?, ?, ?)',
-        [telegram_id, username, first_name, last_name],
-        function(err) {
-          if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ error: 'Database error: ' + err.message });
-          }
-          
-          console.log('User created with ID:', this.lastID);
-          console.log('User created with changes:', this.changes);
-          
-          // Проверим, что пользователь действительно создался
-          db.get(
-            'SELECT * FROM users WHERE id = ?',
-            [this.lastID],
-            (err, newUser) => {
-              if (err) {
-                console.error('Error verifying user creation:', err);
-              } else {
-                console.log('User verification:', newUser);
-              }
-            }
-          );
-          
-          res.json({ 
-            message: 'User created successfully',
-            user_id: this.lastID 
-          });
-        }
-      );
-    }
-  );
+  try {
+    const user = db.createUser({
+      telegram_id: parseInt(telegram_id),
+      username: username || 'user',
+      first_name: first_name || 'User',
+      last_name: last_name || ''
+    });
+    
+    console.log('User created/found:', user);
+    
+    res.json({ 
+      message: 'User created/updated successfully',
+      user_id: user.id 
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Database error: ' + error.message });
+  }
 });
 
 // Отметить посещение
@@ -218,121 +98,90 @@ app.post('/api/visit', (req, res) => {
     return res.status(400).json({ error: 'Invalid QR code' });
   }
   
-  // Проверяем, что пользователь не отметился сегодня
-  const today = new Date().toISOString().split('T')[0];
-  db.get(
-    'SELECT id FROM visits WHERE user_id = ? AND DATE(visit_date) = ?',
-    [user_id, today],
-    (err, existingVisit) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      if (existingVisit) {
-        return res.status(400).json({ error: 'Already visited today' });
-      }
-      
-      // Добавляем посещение
-      db.run(
-        'INSERT INTO visits (user_id, qr_code) VALUES (?, ?)',
-        [user_id, qr_code],
-        function(err) {
-          if (err) {
-            return res.status(500).json({ error: 'Database error' });
-          }
-          
-          // Проверяем, нужно ли дать бонус
-          db.get(
-            'SELECT COUNT(*) as visit_count FROM visits WHERE user_id = ?',
-            [user_id],
-            (err, visitData) => {
-              if (err) {
-                return res.status(500).json({ error: 'Database error' });
-              }
-              
-              const visitCount = visitData.visit_count;
-              let bonusEarned = false;
-              
-              // Если количество посещений кратно 10, даем бонус
-              if (visitCount % 10 === 0 && visitCount > 0) {
-                db.run(
-                  'INSERT INTO bonuses (user_id, bonus_type) VALUES (?, ?)',
-                  [user_id, 'free_visit'],
-                  (err) => {
-                    if (!err) {
-                      bonusEarned = true;
-                    }
-                  }
-                );
-              }
-              
-              res.json({
-                message: 'Visit recorded successfully',
-                visit_count: visitCount,
-                bonus_earned: bonusEarned,
-                visits_to_next_bonus: 10 - (visitCount % 10)
-              });
-            }
-          );
-        }
-      );
+  try {
+    // Проверяем, что пользователь не отметился сегодня
+    const today = new Date().toISOString().split('T')[0];
+    const visits = db.getVisitsByUserId(user_id);
+    const todayVisit = visits.find(visit => 
+      visit.visit_date.startsWith(today)
+    );
+    
+    if (todayVisit) {
+      return res.status(400).json({ error: 'Already visited today' });
     }
-  );
+    
+    // Добавляем посещение
+    const visit = db.createVisit({
+      user_id: user_id,
+      qr_code: qr_code
+    });
+    
+    const visitCount = db.getVisitCount(user_id);
+    let bonusEarned = false;
+    
+    // Если количество посещений кратно 10, даем бонус
+    if (visitCount % 10 === 0 && visitCount > 0) {
+      db.createBonus({
+        user_id: user_id,
+        bonus_type: 'free_visit'
+      });
+      bonusEarned = true;
+    }
+    
+    res.json({
+      message: 'Visit recorded successfully',
+      visit_count: visitCount,
+      bonus_earned: bonusEarned,
+      visits_to_next_bonus: 10 - (visitCount % 10)
+    });
+  } catch (error) {
+    console.error('Error recording visit:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Получить историю посещений
 app.get('/api/visits/:userId', (req, res) => {
-  const userId = req.params.userId;
+  const userId = parseInt(req.params.userId);
   
-  db.all(
-    'SELECT * FROM visits WHERE user_id = ? ORDER BY visit_date DESC',
-    [userId],
-    (err, visits) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      res.json(visits);
-    }
-  );
+  try {
+    const visits = db.getVisitsByUserId(userId);
+    res.json(visits);
+  } catch (error) {
+    console.error('Error getting visits:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Получить бонусы пользователя
 app.get('/api/bonuses/:userId', (req, res) => {
-  const userId = req.params.userId;
+  const userId = parseInt(req.params.userId);
   
-  db.all(
-    'SELECT * FROM bonuses WHERE user_id = ? ORDER BY earned_date DESC',
-    [userId],
-    (err, bonuses) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      res.json(bonuses);
-    }
-  );
+  try {
+    const bonuses = db.getBonusesByUserId(userId);
+    res.json(bonuses);
+  } catch (error) {
+    console.error('Error getting bonuses:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Использовать бонус
 app.post('/api/bonus/use/:bonusId', (req, res) => {
-  const bonusId = req.params.bonusId;
+  const bonusId = parseInt(req.params.bonusId);
   
-  db.run(
-    'UPDATE bonuses SET is_used = 1, used_date = CURRENT_TIMESTAMP WHERE id = ? AND is_used = 0',
-    [bonusId],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      if (this.changes === 0) {
-        return res.status(400).json({ error: 'Bonus not found or already used' });
-      }
-      
-      res.json({ message: 'Bonus used successfully' });
+  try {
+    const success = db.useBonus(bonusId);
+    
+    if (!success) {
+      return res.status(400).json({ error: 'Bonus not found or already used' });
     }
-  );
+    
+    res.json({ message: 'Bonus used successfully' });
+  } catch (error) {
+    console.error('Error using bonus:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Генерировать QR код для заведения
@@ -358,28 +207,32 @@ app.get('/api/debug', (req, res) => {
   console.log('=== DEBUG REQUEST ===');
   console.log('Environment:', {
     VERCEL: process.env.VERCEL,
-    NODE_ENV: process.env.NODE_ENV,
-    DATABASE_PATH: config.DATABASE_PATH
+    NODE_ENV: process.env.NODE_ENV
   });
   
-  // Проверим, что в базе данных
-  db.all('SELECT * FROM users', (err, users) => {
-    if (err) {
-      console.error('Debug database error:', err);
-      return res.status(500).json({ error: 'Database error', details: err.message });
-    }
+  try {
+    const users = db.data.users;
+    const visits = db.data.visits;
+    const bonuses = db.data.bonuses;
     
     console.log('Users in database:', users);
     res.json({
       environment: {
         VERCEL: process.env.VERCEL,
         NODE_ENV: process.env.NODE_ENV,
-        DATABASE_PATH: config.DATABASE_PATH
+        databaseType: 'SimpleDB'
       },
       users: users,
-      totalUsers: users.length
+      visits: visits,
+      bonuses: bonuses,
+      totalUsers: users.length,
+      totalVisits: visits.length,
+      totalBonuses: bonuses.length
     });
-  });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: 'Debug error', details: error.message });
+  }
 });
 
 const PORT = config.PORT;
