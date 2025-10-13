@@ -1,9 +1,8 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-
-// Создаем путь к базе данных
-const dbPath = path.join(process.cwd(), 'database.sqlite');
-const db = new sqlite3.Database(dbPath);
+// Импортируем данные из основного файла
+// В реальном приложении это было бы в базе данных
+let users = new Map();
+let visits = new Map();
+let bonuses = new Map();
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -23,57 +22,40 @@ export default function handler(req, res) {
       return res.status(400).json({ error: 'User ID is required' });
     }
     
-    db.get(
-      'SELECT * FROM users WHERE id = ?',
-      [userId],
-      (err, user) => {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (!user) {
-          return res.status(404).json({ error: 'User not found' });
-        }
-        
-        // Получаем количество посещений
-        db.get(
-          'SELECT COUNT(*) as visit_count FROM visits WHERE user_id = ?',
-          [user.id],
-          (err, visitData) => {
-            if (err) {
-              console.error('Database error:', err);
-              return res.status(500).json({ error: 'Database error' });
-            }
-            
-            // Получаем количество неиспользованных бонусов
-            db.get(
-              'SELECT COUNT(*) as bonus_count FROM bonuses WHERE user_id = ? AND is_used = 0',
-              [user.id],
-              (err, bonusData) => {
-                if (err) {
-                  console.error('Database error:', err);
-                  return res.status(500).json({ error: 'Database error' });
-                }
-                
-                res.json({
-                  user: {
-                    id: user.id,
-                    telegram_id: user.telegram_id,
-                    username: user.username,
-                    first_name: user.first_name,
-                    last_name: user.last_name
-                  },
-                  visits: visitData.visit_count,
-                  bonuses: bonusData.bonus_count,
-                  visits_to_bonus: 10 - (visitData.visit_count % 10)
-                });
-              }
-            );
-          }
-        );
+    const user = users.get(parseInt(userId));
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Подсчитываем посещения
+    let visitCount = 0;
+    for (let [id, visit] of visits) {
+      if (visit.user_id === parseInt(userId)) {
+        visitCount++;
       }
-    );
+    }
+    
+    // Подсчитываем бонусы
+    let bonusCount = 0;
+    for (let [id, bonus] of bonuses) {
+      if (bonus.user_id === parseInt(userId) && !bonus.is_used) {
+        bonusCount++;
+      }
+    }
+    
+    res.json({
+      user: {
+        id: user.id,
+        telegram_id: user.telegram_id,
+        username: user.username,
+        first_name: user.first_name,
+        last_name: user.last_name
+      },
+      visits: visitCount,
+      bonuses: bonusCount,
+      visits_to_bonus: 10 - (visitCount % 10)
+    });
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }

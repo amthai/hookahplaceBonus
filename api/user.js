@@ -1,42 +1,8 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-
-// Создаем путь к базе данных
-const dbPath = path.join(process.cwd(), 'database.sqlite');
-const db = new sqlite3.Database(dbPath);
-
-// Инициализация базы данных
-db.serialize(() => {
-  // Таблица пользователей
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_id INTEGER UNIQUE,
-    username TEXT,
-    first_name TEXT,
-    last_name TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  // Таблица посещений
-  db.run(`CREATE TABLE IF NOT EXISTS visits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    visit_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    qr_code TEXT,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-
-  // Таблица бонусов
-  db.run(`CREATE TABLE IF NOT EXISTS bonuses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    bonus_type TEXT DEFAULT 'free_visit',
-    earned_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    used_date DATETIME,
-    is_used BOOLEAN DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-});
+// Простое хранение в памяти (для демонстрации)
+let users = new Map();
+let visits = new Map();
+let bonuses = new Map();
+let nextUserId = 1;
 
 export default function handler(req, res) {
   // Включаем CORS
@@ -58,22 +24,34 @@ export default function handler(req, res) {
       return res.status(400).json({ error: 'telegram_id is required' });
     }
     
-    db.run(
-      'INSERT OR REPLACE INTO users (telegram_id, username, first_name, last_name) VALUES (?, ?, ?, ?)',
-      [telegram_id, username, first_name, last_name],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error: ' + err.message });
-        }
-        
-        console.log('User created/updated with ID:', this.lastID);
-        res.json({ 
-          message: 'User created/updated successfully',
-          user_id: this.lastID 
-        });
+    // Проверяем, существует ли пользователь
+    let user = null;
+    for (let [id, userData] of users) {
+      if (userData.telegram_id === telegram_id) {
+        user = { id, ...userData };
+        break;
       }
-    );
+    }
+    
+    if (!user) {
+      // Создаем нового пользователя
+      const userId = nextUserId++;
+      user = {
+        id: userId,
+        telegram_id,
+        username: username || 'demo_user',
+        first_name: first_name || 'Demo',
+        last_name: last_name || 'User',
+        created_at: new Date().toISOString()
+      };
+      users.set(userId, user);
+    }
+    
+    console.log('User created/updated:', user);
+    res.json({ 
+      message: 'User created/updated successfully',
+      user_id: user.id 
+    });
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }
