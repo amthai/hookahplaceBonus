@@ -235,10 +235,7 @@
             <div id="visitHistory"></div>
         </div>
 
-        <div class="history-section">
-            <div class="section-title">Мои бонусы</div>
-            <div id="bonusHistory"></div>
-        </div>
+        <!-- Секция 'Мои бонусы' удалена -->
     </div>
 
     <script>
@@ -294,7 +291,6 @@
                 // Загружаем данные пользователя
                 await loadUserData();
                 await loadVisitHistory();
-                await loadBonusHistory();
                 
             } catch (error) {
                 console.error('Ошибка инициализации:', error);
@@ -444,20 +440,20 @@
         }
 
         // Загрузка истории бонусов
-        async function loadBonusHistory() {
-            if (!currentUser) {
-                console.error('currentUser is null');
-                return;
-            }
+        // async function loadBonusHistory() {
+        //     if (!currentUser) {
+        //         console.error('currentUser is null');
+        //         return;
+        //     }
             
-            const response = await fetch(`/api/bonuses/${currentUser.id}`);
-            if (!response.ok) {
-                throw new Error('Ошибка загрузки истории бонусов');
-            }
+        //     const response = await fetch(`/api/bonuses/${currentUser.id}`);
+        //     if (!response.ok) {
+        //         throw new Error('Ошибка загрузки истории бонусов');
+        //     }
 
-            bonusHistory = await response.json();
-            renderBonusHistory();
-        }
+        //     bonusHistory = await response.json();
+        //     renderBonusHistory();
+        // }
 
         // Отображение истории посещений
         function renderVisitHistory() {
@@ -481,30 +477,30 @@
         }
 
         // Отображение истории бонусов
-        function renderBonusHistory() {
-            const container = document.getElementById('bonusHistory');
-            container.innerHTML = '';
+        // function renderBonusHistory() {
+        //     const container = document.getElementById('bonusHistory');
+        //     container.innerHTML = '';
 
-            if (bonusHistory.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--tg-theme-hint-color, #999999); padding: 20px;">Нет бонусов</div>';
-                return;
-            }
+        //     if (bonusHistory.length === 0) {
+        //         container.innerHTML = '<div style="text-align: center; color: var(--tg-theme-hint-color, #999999); padding: 20px;">Нет бонусов</div>';
+        //         return;
+        //     }
 
-            bonusHistory.forEach(bonus => {
-                const bonusElement = document.createElement('div');
-                bonusElement.className = 'bonus-item';
-                bonusElement.innerHTML = `
-                    <div>
-                        <div class="bonus-type">${getBonusTypeText(bonus.bonus_type)}</div>
-                        <div class="bonus-status">${formatDate(bonus.earned_date)}</div>
-                    </div>
-                    <div>
-                        ${bonus.is_used ? '✅ Использован' : '⏳ Доступен'}
-                    </div>
-                `;
-                container.appendChild(bonusElement);
-            });
-        }
+        //     bonusHistory.forEach(bonus => {
+        //         const bonusElement = document.createElement('div');
+        //         bonusElement.className = 'bonus-item';
+        //         bonusElement.innerHTML = `
+        //             <div>
+        //                 <div class="bonus-type">${getBonusTypeText(bonus.bonus_type)}</div>
+        //                 <div class="bonus-status">${formatDate(bonus.earned_date)}</div>
+        //             </div>
+        //             <div>
+        //                 ${bonus.is_used ? '✅ Использован' : '⏳ Доступен'}
+        //             </div>
+        //         `;
+        //         container.appendChild(bonusElement);
+        //     });
+        // }
 
         // Получение текста типа бонуса
         function getBonusTypeText(type) {
