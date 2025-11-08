@@ -98,3 +98,7 @@ backups/
 
 # QR code files
 public/qr-code.png
+
+# Uploaded files
+public/uploads/
+!public/uploads/.gitkeep

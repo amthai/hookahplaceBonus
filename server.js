@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const config = require('./config');
 
 // Используем Supabase PostgreSQL
@@ -25,6 +28,41 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Настройка загрузки файлов
+const uploadsDir = path.join(__dirname, 'public', 'uploads', 'staff');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'staff-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Только изображения (jpeg, jpg, png, gif, webp) разрешены'));
+    }
+  }
+});
+
 // Middleware для правильной раздачи шрифтов
 app.use('/fonts', express.static('public/fonts', {
   setHeaders: (res, path) => {
@@ -37,9 +75,26 @@ app.use('/fonts', express.static('public/fonts', {
 }));
 
 app.use(express.static('public'));
+app.use('/uploads', express.static('public/uploads'));
 
 // Инициализация базы данных
 console.log('Supabase PostgreSQL initialized');
+
+// Admin authentication
+const ADMIN_LOGIN = process.env.ADMIN_LOGIN || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const activeSessions = new Set(); // Простое хранилище сессий в памяти
+
+// Middleware для проверки админ-доступа
+const requireAdmin = (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+  
+  if (!token || !activeSessions.has(token)) {
+    return res.status(401).json({ error: 'Необходима авторизация' });
+  }
+  
+  next();
+};
 
 // API Routes
 
@@ -215,9 +270,242 @@ app.get('/api/qr-code', (req, res) => {
   });
 });
 
+// Admin API Routes
+// Вход в админку
+app.post('/api/admin/login', (req, res) => {
+  const { login, password } = req.body;
+  
+  if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
+    const token = uuidv4();
+    activeSessions.add(token);
+    
+    // Токен действителен 24 часа (в продакшене лучше использовать JWT с истечением)
+    setTimeout(() => {
+      activeSessions.delete(token);
+    }, 24 * 60 * 60 * 1000);
+    
+    res.json({ token, message: 'Успешный вход' });
+  } else {
+    res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
+});
+
+// Получить всех пользователей со статистикой
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const users = await db.getAllUsersWithStats();
+    res.json(users);
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Получить историю посещений пользователя
+app.get('/api/admin/users/:userId/visits', requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  
+  try {
+    const visits = await db.getVisitsByUserId(userId);
+    res.json(visits);
+  } catch (error) {
+    console.error('Error getting visits:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Staff API Routes
+// Получить сотрудников на смене (публичный эндпоинт)
+app.get('/api/staff/on-shift', async (req, res) => {
+  try {
+    const staff = await db.getStaffOnShift();
+    res.json(staff);
+  } catch (error) {
+    console.error('Error getting staff on shift:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Получить всех сотрудников (админ)
+app.get('/api/admin/staff', requireAdmin, async (req, res) => {
+  try {
+    const staff = await db.getAllStaff();
+    res.json(staff);
+  } catch (error) {
+    console.error('Error getting staff:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Создать сотрудника (админ)
+app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+        }
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
+  const { name, is_on_shift } = req.body;
+  
+  if (!name) {
+    // Если файл был загружен, но имя не указано, удаляем файл
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(400).json({ error: 'Имя сотрудника обязательно' });
+  }
+  
+  try {
+    let avatar_url = null;
+    
+    // Если файл загружен, формируем URL
+    if (req.file) {
+      avatar_url = `/uploads/staff/${req.file.filename}`;
+    }
+    
+    const staff = await db.createStaff({
+      name,
+      avatar_url: avatar_url,
+      is_on_shift: is_on_shift === 'true' || is_on_shift === true
+    });
+    res.json(staff);
+  } catch (error) {
+    // Если произошла ошибка и файл был загружен, удаляем его
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error('Error creating staff:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Обновить сотрудника (админ)
+app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+        }
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
+  const staffId = parseInt(req.params.staffId);
+  const { name, is_on_shift } = req.body;
+  
+  try {
+    // Получаем текущего сотрудника для удаления старого файла
+    const currentStaff = await db.getStaffById(staffId);
+    
+    let avatar_url = undefined;
+    
+    // Если файл загружен, формируем новый URL
+    if (req.file) {
+      avatar_url = `/uploads/staff/${req.file.filename}`;
+      
+      // Удаляем старый файл, если он был
+      if (currentStaff && currentStaff.avatar_url && currentStaff.avatar_url.startsWith('/uploads/staff/')) {
+        const oldFilePath = path.join(__dirname, 'public', currentStaff.avatar_url);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+    }
+    
+    const staff = await db.updateStaff(staffId, {
+      name,
+      avatar_url,
+      is_on_shift: is_on_shift !== undefined ? (is_on_shift === 'true' || is_on_shift === true) : undefined
+    });
+    
+    if (!staff) {
+      // Если сотрудник не найден, но файл был загружен, удаляем его
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({ error: 'Сотрудник не найден' });
+    }
+    
+    res.json(staff);
+  } catch (error) {
+    // Если произошла ошибка и файл был загружен, удаляем его
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error('Error updating staff:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Обновить статус смены сотрудника (админ)
+app.patch('/api/admin/staff/:staffId/shift', requireAdmin, async (req, res) => {
+  const staffId = parseInt(req.params.staffId);
+  const { is_on_shift } = req.body;
+  
+  if (typeof is_on_shift !== 'boolean') {
+    return res.status(400).json({ error: 'is_on_shift должен быть boolean' });
+  }
+  
+  try {
+    const staff = await db.updateStaffShiftStatus(staffId, is_on_shift);
+    
+    if (!staff) {
+      return res.status(404).json({ error: 'Сотрудник не найден' });
+    }
+    
+    res.json(staff);
+  } catch (error) {
+    console.error('Error updating staff shift status:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Удалить сотрудника (админ)
+app.delete('/api/admin/staff/:staffId', requireAdmin, async (req, res) => {
+  const staffId = parseInt(req.params.staffId);
+  
+  try {
+    // Получаем сотрудника перед удалением, чтобы удалить файл
+    const staffToDelete = await db.getStaffById(staffId);
+    
+    if (!staffToDelete) {
+      return res.status(404).json({ error: 'Сотрудник не найден' });
+    }
+    
+    const staff = await db.deleteStaff(staffId);
+    
+    // Удаляем файл аватарки, если он был
+    if (staff.avatar_url && staff.avatar_url.startsWith('/uploads/staff/')) {
+      const filePath = path.join(__dirname, 'public', staff.avatar_url);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    res.json({ message: 'Сотрудник удален', staff });
+  } catch (error) {
+    console.error('Error deleting staff:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
 // Главная страница
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
+});
+
+// Админка
+app.get('/admin', (req, res) => {
+  res.sendFile(__dirname + '/public/admin.html');
 });
 
 // Debug endpoint для проверки состояния
