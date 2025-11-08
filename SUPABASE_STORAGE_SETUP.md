@@ -35,19 +35,58 @@
    - **Project URL** (например: `https://xxxxx.supabase.co`)
    - **service_role key** (секретный ключ, НЕ anon key!)
 
-### 4. Добавление переменных окружения
+### 4. Получение service_role key
+
+1. В Supabase Dashboard → Settings → API
+2. В разделе **Project API keys** найди **service_role key**
+3. Нажми кнопку **Reveal** (показать) рядом с ключом
+4. Скопируй ключ (он начинается с `eyJ...`)
+
+**Важно:** 
+- НЕ используй `anon` key - он не имеет прав на запись
+- Используй именно `service_role` key - он имеет полные права
+
+### 5. Добавление переменных окружения
 
 #### На Vercel:
-1. Открой проект в Vercel Dashboard
-2. Settings → Environment Variables
-3. Добавь переменные:
-   - `SUPABASE_URL` = твой Project URL
-   - `SUPABASE_SERVICE_ROLE_KEY` = твой service_role key
+
+1. Открой [Vercel Dashboard](https://vercel.com/dashboard)
+2. Выбери свой проект
+3. Перейди в **Settings** (вкладка вверху)
+4. В левом меню выбери **Environment Variables**
+5. Нажми **Add New** или **Add**
+6. Добавь первую переменную:
+   - **Key**: `SUPABASE_URL`
+   - **Value**: твой Project URL (например: `https://vvuodxabzeudqskteiiz.supabase.co`)
+   - **Environment**: отметь все (Production, Preview, Development)
+   - Нажми **Save**
+7. Добавь вторую переменную:
+   - **Key**: `SUPABASE_SERVICE_ROLE_KEY`
+   - **Value**: твой service_role key (скопированный из Supabase)
+   - **Environment**: отметь все (Production, Preview, Development)
+   - Нажми **Save**
+8. Передеплой приложение:
+   - Перейди в **Deployments**
+   - Найди последний деплой
+   - Нажми на три точки (⋮) справа
+   - Выбери **Redeploy**
 
 #### На Render:
-1. Открой проект в Render Dashboard
-2. Environment → Environment Variables
-3. Добавь те же переменные
+
+1. Открой [Render Dashboard](https://dashboard.render.com)
+2. Выбери свой **Web Service** (твой проект)
+3. В левом меню выбери **Environment**
+4. Прокрути до раздела **Environment Variables**
+5. Нажми **Add Environment Variable**
+6. Добавь первую переменную:
+   - **Key**: `SUPABASE_URL`
+   - **Value**: твой Project URL
+   - Нажми **Save Changes**
+7. Добавь вторую переменную:
+   - **Key**: `SUPABASE_SERVICE_ROLE_KEY`
+   - **Value**: твой service_role key
+   - Нажми **Save Changes**
+8. Render автоматически перезапустит сервис после сохранения
 
 ### 5. Деплой
 
