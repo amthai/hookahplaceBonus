@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const QRCode = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -170,7 +170,7 @@ console.log('Supabase PostgreSQL initialized');
 // Admin authentication
 const ADMIN_LOGIN = process.env.ADMIN_LOGIN || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const activeSessions = new Set(); // Простое хранилище сессий в памяти
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware для проверки админ-доступа
 const requireAdmin = (req, res, next) => {
@@ -180,11 +180,20 @@ const requireAdmin = (req, res, next) => {
     return res.status(401).json({ error: 'Токен не предоставлен' });
   }
   
-  if (!activeSessions.has(token)) {
+  try {
+    // Проверяем JWT токен
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Проверяем, что токен для админа
+    if (decoded.type !== 'admin') {
+      return res.status(401).json({ error: 'Недействительный токен' });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('JWT verification error:', error);
     return res.status(401).json({ error: 'Недействительный токен' });
   }
-  
-  next();
 };
 
 // API Routes
@@ -367,13 +376,16 @@ app.post('/api/admin/login', (req, res) => {
   const { login, password } = req.body;
   
   if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
-    const token = uuidv4();
-    activeSessions.add(token);
-    
-    // Токен действителен 24 часа (в продакшене лучше использовать JWT с истечением)
-    setTimeout(() => {
-      activeSessions.delete(token);
-    }, 24 * 60 * 60 * 1000);
+    // Создаем JWT токен
+    const token = jwt.sign(
+      { 
+        type: 'admin',
+        login: login,
+        iat: Math.floor(Date.now() / 1000)
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
     
     res.json({ token, message: 'Успешный вход' });
   } else {
