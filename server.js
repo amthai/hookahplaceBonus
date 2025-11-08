@@ -433,6 +433,16 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 app.get('/api/staff/on-shift', cors(), async (req, res) => {
   try {
     const staff = await db.getStaffOnShift();
+    console.log('=== Staff on shift API ===');
+    console.log('Staff count:', staff.length);
+    staff.forEach((member, index) => {
+      console.log(`Staff ${index}:`, {
+        id: member.id,
+        name: member.name,
+        avatar_url: member.avatar_url,
+        is_on_shift: member.is_on_shift
+      });
+    });
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.json(staff);
