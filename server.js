@@ -45,19 +45,10 @@ try {
   // На Vercel это может быть нормально, если папка уже существует
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'staff-' + uniqueSuffix + ext);
-  }
-});
-
+// Используем memory storage для работы на Vercel
+// Файлы конвертируем в base64 и сохраняем в БД
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
   },
@@ -326,29 +317,6 @@ app.get('/api/admin/users/:userId/visits', requireAdmin, async (req, res) => {
 });
 
 // Staff API Routes
-// Получить аватарку сотрудника (для Vercel /tmp)
-app.get('/api/staff/avatar/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(uploadsDir, filename);
-  
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: 'Файл не найден' });
-  }
-  
-  const ext = path.extname(filename).toLowerCase();
-  const contentType = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp'
-  }[ext] || 'image/jpeg';
-  
-  res.setHeader('Content-Type', contentType);
-  res.setHeader('Cache-Control', 'public, max-age=31536000');
-  res.sendFile(filePath);
-});
-
 // Получить сотрудников на смене (публичный эндпоинт)
 app.get('/api/staff/on-shift', async (req, res) => {
   try {
@@ -388,29 +356,18 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
   const { name, is_on_shift } = req.body;
   
   if (!name) {
-    // Если файл был загружен, но имя не указано, удаляем файл
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
+    // Если имя не указано, просто возвращаем ошибку (файл в памяти, удалять не нужно)
     return res.status(400).json({ error: 'Имя сотрудника обязательно' });
   }
   
   try {
     let avatar_url = null;
     
-    // Если файл загружен, формируем URL
+    // Если файл загружен, конвертируем в base64 и сохраняем в БД
     if (req.file) {
-      // На Vercel файлы в /tmp не доступны через статику, используем base64 или внешнее хранилище
-      // Для простоты используем временное решение - сохраняем в /tmp и возвращаем путь
-      // В продакшене лучше использовать Supabase Storage или другой CDN
-      if (isVercel) {
-        // На Vercel читаем файл и конвертируем в base64 или используем временный URL
-        // Пока используем путь, но это не будет работать для статики
-        // TODO: Интегрировать Supabase Storage для постоянного хранения
-        avatar_url = `/api/staff/avatar/${req.file.filename}`;
-      } else {
-        avatar_url = `/uploads/staff/${req.file.filename}`;
-      }
+      const base64 = req.file.buffer.toString('base64');
+      const mimeType = req.file.mimetype;
+      avatar_url = `data:${mimeType};base64,${base64}`;
     }
     
     const staff = await db.createStaff({
@@ -420,10 +377,6 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
     });
     res.json(staff);
   } catch (error) {
-    // Если произошла ошибка и файл был загружен, удаляем его
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
     console.error('Error creating staff:', error);
     res.status(500).json({ error: 'Ошибка базы данных' });
   }
@@ -452,28 +405,11 @@ app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
     
     let avatar_url = undefined;
     
-    // Если файл загружен, формируем новый URL
+    // Если файл загружен, конвертируем в base64
     if (req.file) {
-      if (isVercel) {
-        avatar_url = `/api/staff/avatar/${req.file.filename}`;
-      } else {
-        avatar_url = `/uploads/staff/${req.file.filename}`;
-      }
-      
-      // Удаляем старый файл, если он был
-      if (currentStaff && currentStaff.avatar_url) {
-        let oldFilePath;
-        if (currentStaff.avatar_url.startsWith('/api/staff/avatar/')) {
-          const oldFilename = currentStaff.avatar_url.split('/').pop();
-          oldFilePath = path.join(uploadsDir, oldFilename);
-        } else if (currentStaff.avatar_url.startsWith('/uploads/staff/')) {
-          oldFilePath = path.join(__dirname, 'public', currentStaff.avatar_url);
-        }
-        
-        if (oldFilePath && fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
-        }
-      }
+      const base64 = req.file.buffer.toString('base64');
+      const mimeType = req.file.mimetype;
+      avatar_url = `data:${mimeType};base64,${base64}`;
     }
     
     const staff = await db.updateStaff(staffId, {
@@ -483,19 +419,11 @@ app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
     });
     
     if (!staff) {
-      // Если сотрудник не найден, но файл был загружен, удаляем его
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
       return res.status(404).json({ error: 'Сотрудник не найден' });
     }
     
     res.json(staff);
   } catch (error) {
-    // Если произошла ошибка и файл был загружен, удаляем его
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
     console.error('Error updating staff:', error);
     res.status(500).json({ error: 'Ошибка базы данных' });
   }
@@ -538,20 +466,7 @@ app.delete('/api/admin/staff/:staffId', requireAdmin, async (req, res) => {
     
     const staff = await db.deleteStaff(staffId);
     
-    // Удаляем файл аватарки, если он был
-    if (staff.avatar_url) {
-      let filePath;
-      if (staff.avatar_url.startsWith('/api/staff/avatar/')) {
-        const filename = staff.avatar_url.split('/').pop();
-        filePath = path.join(uploadsDir, filename);
-      } else if (staff.avatar_url.startsWith('/uploads/staff/')) {
-        filePath = path.join(__dirname, 'public', staff.avatar_url);
-      }
-      
-      if (filePath && fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
+    // Файлы теперь хранятся в БД как base64, удаление не требуется
     
     res.json({ message: 'Сотрудник удален', staff });
   } catch (error) {

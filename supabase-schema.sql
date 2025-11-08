@@ -33,11 +33,14 @@ CREATE TABLE IF NOT EXISTS bonuses (
 CREATE TABLE IF NOT EXISTS staff (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  avatar_url VARCHAR(500),
+  avatar_url TEXT,
   is_on_shift BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Обновление существующей таблицы
+ALTER TABLE staff ALTER COLUMN avatar_url TYPE TEXT;
 
 -- Создание индексов для оптимизации
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
