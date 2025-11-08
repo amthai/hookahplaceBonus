@@ -665,8 +665,8 @@
                 const visitElement = document.createElement('div');
                 visitElement.className = 'visit-item';
                 visitElement.innerHTML = `
-                    <div>Посещение #${visit.id}</div>
-                    <div class="visit-date">${formatDate(visit.visit_date)}</div>
+                    <div>${formatDate(visit.visit_date)}</div>
+                    <div class="visit-date">${formatTime(visit.visit_date)}</div>
                 `;
                 container.appendChild(visitElement);
             });
@@ -712,11 +712,19 @@
         function formatDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('ru-RU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // Форматирование времени
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('ru-RU', {
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                hour12: false
             });
         }
 
