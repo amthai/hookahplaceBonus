@@ -26,7 +26,9 @@ const app = express();
 
 // Middleware
 app.use(cors());
+// Для FormData не используем express.json(), так как multer обрабатывает multipart/form-data
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Настройка загрузки файлов
 // На Vercel используем /tmp, локально - public/uploads/staff
@@ -358,8 +360,13 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 
 // Создать сотрудника (админ)
 app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
+  console.log('POST /api/admin/staff - request received');
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body keys:', Object.keys(req.body));
+  
   upload.single('avatar')(req, res, (err) => {
     if (err) {
+      console.error('Multer error:', err);
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
@@ -367,13 +374,15 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
       }
       return res.status(400).json({ error: err.message });
     }
+    console.log('File uploaded successfully:', req.file ? req.file.originalname : 'no file');
     next();
   });
 }, async (req, res) => {
+  console.log('Processing staff creation, body:', req.body);
   const { name, is_on_shift } = req.body;
   
   if (!name) {
-    // Если имя не указано, просто возвращаем ошибку (файл в памяти, удалять не нужно)
+    console.log('Name is missing');
     return res.status(400).json({ error: 'Имя сотрудника обязательно' });
   }
   
@@ -383,6 +392,7 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
     // Если файл загружен, конвертируем в base64 и сохраняем в БД
     if (req.file) {
       try {
+        console.log('Converting file to base64, size:', req.file.size);
         const base64 = req.file.buffer.toString('base64');
         const mimeType = req.file.mimetype;
         avatar_url = `data:${mimeType};base64,${base64}`;
@@ -393,15 +403,17 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
       }
     }
     
+    console.log('Creating staff in database:', { name, hasAvatar: !!avatar_url });
     const staff = await db.createStaff({
       name,
       avatar_url: avatar_url,
       is_on_shift: is_on_shift === 'true' || is_on_shift === true
     });
+    console.log('Staff created successfully:', staff.id);
     res.json(staff);
   } catch (error) {
     console.error('Error creating staff:', error);
-    res.status(500).json({ error: 'Ошибка базы данных' });
+    res.status(500).json({ error: 'Ошибка базы данных: ' + error.message });
   }
 });
 
