@@ -72,16 +72,28 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://vvuodxabzeudqskteiiz.su
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 let supabaseStorage = null;
 
+console.log('=== Supabase Storage Configuration ===');
+console.log('SUPABASE_URL:', supabaseUrl);
+console.log('SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? 'SET (hidden)' : 'NOT SET');
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Vercel:', process.env.VERCEL);
+
 if (supabaseServiceKey) {
-  supabaseStorage = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-  console.log('Supabase Storage initialized');
+  try {
+    supabaseStorage = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    console.log('✅ Supabase Storage initialized successfully');
+  } catch (error) {
+    console.error('❌ Error initializing Supabase Storage:', error);
+    console.warn('⚠️  Falling back to local file storage');
+  }
 } else {
-  console.warn('Supabase Storage not configured - using local file storage');
+  console.warn('⚠️  Supabase Storage not configured - SUPABASE_SERVICE_ROLE_KEY not set');
+  console.warn('⚠️  Using local file storage (files will not persist on serverless platforms)');
 }
 
 // Настройка multer для загрузки файлов
@@ -427,31 +439,50 @@ app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), async (req, 
       return res.status(400).json({ error: 'Имя сотрудника обязательно' });
     }
     
+    console.log('Creating staff member:', name);
+    console.log('File uploaded:', !!req.file);
+    console.log('Supabase Storage available:', !!supabaseStorage);
+    
     let avatarUrl = null;
     if (req.file) {
+      console.log('File details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        buffer: req.file.buffer ? 'present' : 'missing'
+      });
+      
       if (supabaseStorage) {
         // Загружаем в Supabase Storage
         const filename = `staff-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
+        console.log('Uploading to Supabase Storage, filename:', filename);
         avatarUrl = await uploadToSupabaseStorage(req.file, filename);
+        console.log('Upload result, avatarUrl:', avatarUrl);
+        
         if (!avatarUrl) {
-          return res.status(500).json({ error: 'Ошибка загрузки изображения в хранилище' });
+          console.error('Failed to upload to Supabase Storage');
+          return res.status(500).json({ error: 'Ошибка загрузки изображения в хранилище. Проверьте логи сервера.' });
         }
       } else {
         // Используем локальное хранилище
+        console.log('Using local file storage');
         avatarUrl = `/uploads/staff/${req.file.filename}`;
       }
     }
     
+    console.log('Creating staff with avatar_url:', avatarUrl);
     const staff = await db.createStaff({
       name,
       avatar_url: avatarUrl,
       is_on_shift: is_on_shift === 'true' || is_on_shift === true
     });
     
+    console.log('Staff created successfully:', staff);
     res.json(staff);
   } catch (error) {
     console.error('Error creating staff:', error);
-    res.status(500).json({ error: 'Ошибка создания сотрудника' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Ошибка создания сотрудника: ' + error.message });
   }
 });
 
