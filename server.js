@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 const config = require('./config');
 
 // Используем Supabase PostgreSQL
@@ -67,7 +68,11 @@ app.use('/uploads', express.static('public/uploads', {
 app.use(express.static('public'));
 
 // Настройка multer для загрузки файлов
-const storage = multer.diskStorage({
+// Используем memory storage для загрузки в Supabase Storage
+const memoryStorage = multer.memoryStorage();
+
+// Локальное хранилище для разработки
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = 'public/uploads/staff';
     if (!fs.existsSync(uploadDir)) {
@@ -81,8 +86,9 @@ const storage = multer.diskStorage({
   }
 });
 
+// Используем memory storage если Supabase Storage настроен, иначе disk storage
 const upload = multer({
-  storage: storage,
+  storage: supabaseStorage ? memoryStorage : diskStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -96,6 +102,54 @@ const upload = multer({
     }
   }
 });
+
+// Инициализация Supabase Storage клиента
+const supabaseUrl = process.env.SUPABASE_URL || 'https://vvuodxabzeudqskteiiz.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+let supabaseStorage = null;
+
+if (supabaseServiceKey) {
+  supabaseStorage = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  console.log('Supabase Storage initialized');
+} else {
+  console.warn('Supabase Storage not configured - using local file storage');
+}
+
+// Функция для загрузки файла в Supabase Storage
+async function uploadToSupabaseStorage(file, filename) {
+  if (!supabaseStorage) {
+    return null;
+  }
+  
+  try {
+    const { data, error } = await supabaseStorage.storage
+      .from('staff-avatars')
+      .upload(filename, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+    
+    if (error) {
+      console.error('Error uploading to Supabase Storage:', error);
+      return null;
+    }
+    
+    // Получаем публичный URL
+    const { data: { publicUrl } } = supabaseStorage.storage
+      .from('staff-avatars')
+      .getPublicUrl(filename);
+    
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading to Supabase Storage:', error);
+    return null;
+  }
+}
 
 // Инициализация базы данных
 console.log('Supabase PostgreSQL initialized');
@@ -374,7 +428,17 @@ app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), async (req, 
     
     let avatarUrl = null;
     if (req.file) {
-      avatarUrl = `/uploads/staff/${req.file.filename}`;
+      if (supabaseStorage) {
+        // Загружаем в Supabase Storage
+        const filename = `staff-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
+        avatarUrl = await uploadToSupabaseStorage(req.file, filename);
+        if (!avatarUrl) {
+          return res.status(500).json({ error: 'Ошибка загрузки изображения в хранилище' });
+        }
+      } else {
+        // Используем локальное хранилище
+        avatarUrl = `/uploads/staff/${req.file.filename}`;
+      }
     }
     
     const staff = await db.createStaff({
@@ -403,7 +467,17 @@ app.put('/api/admin/staff/:id', requireAdmin, upload.single('avatar'), async (re
     }
     
     if (req.file) {
-      updateData.avatar_url = `/uploads/staff/${req.file.filename}`;
+      if (supabaseStorage) {
+        // Загружаем в Supabase Storage
+        const filename = `staff-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
+        const avatarUrl = await uploadToSupabaseStorage(req.file, filename);
+        if (avatarUrl) {
+          updateData.avatar_url = avatarUrl;
+        }
+      } else {
+        // Используем локальное хранилище
+        updateData.avatar_url = `/uploads/staff/${req.file.filename}`;
+      }
     }
     
     const staff = await db.updateStaff(staffId, updateData);
