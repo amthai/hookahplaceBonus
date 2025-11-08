@@ -376,13 +376,14 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 
 // Создать сотрудника (админ)
 app.post('/api/admin/staff', requireAdmin, multerUpload, async (req, res) => {
-  const { name, is_on_shift } = req.body;
-  
-  if (!name) {
-    return res.status(400).json({ error: 'Имя сотрудника обязательно' });
-  }
-  
   try {
+    const name = req.body?.name;
+    const is_on_shift = req.body?.is_on_shift;
+    
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ error: 'Имя сотрудника обязательно' });
+    }
+    
     let avatar_url = null;
     
     // Если файл загружен, конвертируем в base64 и сохраняем в БД
@@ -393,10 +394,11 @@ app.post('/api/admin/staff', requireAdmin, multerUpload, async (req, res) => {
     }
     
     const staff = await db.createStaff({
-      name,
+      name: name.trim(),
       avatar_url: avatar_url,
       is_on_shift: is_on_shift === 'true' || is_on_shift === true
     });
+    
     res.json(staff);
   } catch (error) {
     console.error('Error creating staff:', error);
