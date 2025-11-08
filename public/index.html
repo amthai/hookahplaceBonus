@@ -1001,8 +1001,13 @@
                     if (member.avatar_url) {
                         console.log('Creating image for:', member.name, 'with URL:', member.avatar_url);
                         const avatar = document.createElement('img');
-                        // Убеждаемся, что путь правильный
-                        avatar.src = member.avatar_url.startsWith('/') ? member.avatar_url : '/' + member.avatar_url;
+                        // Если это полный URL (из Supabase Storage), используем как есть
+                        // Если это относительный путь, добавляем /
+                        if (member.avatar_url.startsWith('http://') || member.avatar_url.startsWith('https://')) {
+                            avatar.src = member.avatar_url;
+                        } else {
+                            avatar.src = member.avatar_url.startsWith('/') ? member.avatar_url : '/' + member.avatar_url;
+                        }
                         avatar.alt = member.name;
                         avatar.style.width = '100%';
                         avatar.style.height = '100%';

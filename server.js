@@ -127,7 +127,7 @@ async function uploadToSupabaseStorage(file, filename) {
   }
   
   try {
-    const { data, error } = await supabaseStorage.storage
+    const { data: uploadData, error } = await supabaseStorage.storage
       .from('staff-avatars')
       .upload(filename, file.buffer, {
         contentType: file.mimetype,
@@ -140,11 +140,12 @@ async function uploadToSupabaseStorage(file, filename) {
     }
     
     // Получаем публичный URL
-    const { data: { publicUrl } } = supabaseStorage.storage
+    const { data: urlData } = supabaseStorage.storage
       .from('staff-avatars')
       .getPublicUrl(filename);
     
-    return publicUrl;
+    console.log('Uploaded to Supabase Storage, public URL:', urlData.publicUrl);
+    return urlData.publicUrl;
   } catch (error) {
     console.error('Error uploading to Supabase Storage:', error);
     return null;
