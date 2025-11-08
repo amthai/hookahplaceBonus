@@ -677,45 +677,73 @@
         });
         
         // Обработка формы добавления сотрудника
-        document.getElementById('addStaffForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('staffName').value;
-            const avatarFile = document.getElementById('staffAvatar').files[0];
-            
-            if (!name) {
-                alert('Введите имя сотрудника');
-                return;
-            }
-            
-            try {
-                const formData = new FormData();
-                formData.append('name', name);
-                if (avatarFile) {
-                    formData.append('avatar', avatarFile);
-                }
+        const addStaffForm = document.getElementById('addStaffForm');
+        if (addStaffForm) {
+            addStaffForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log('Form submit triggered');
                 
-                const response = await fetch('/api/admin/staff?token=' + authToken, {
-                    method: 'POST',
-                    body: formData
-                });
+                const name = document.getElementById('staffName').value;
+                const avatarFile = document.getElementById('staffAvatar').files[0];
                 
-                if (response.status === 401) {
-                    logout();
+                console.log('Name:', name, 'Avatar file:', avatarFile ? avatarFile.name : 'none');
+                
+                if (!name) {
+                    alert('Введите имя сотрудника');
                     return;
                 }
                 
-                if (response.ok) {
-                    document.getElementById('addStaffForm').reset();
-                    loadStaff();
-                } else {
-                    const data = await response.json();
-                    alert(data.error || 'Ошибка добавления сотрудника');
+                if (!authToken) {
+                    alert('Ошибка: не авторизован. Перезагрузите страницу.');
+                    return;
                 }
-            } catch (error) {
-                alert('Ошибка соединения с сервером');
-            }
-        });
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    if (avatarFile) {
+                        formData.append('avatar', avatarFile);
+                    }
+                    
+                    console.log('Sending request to /api/admin/staff');
+                    const response = await fetch('/api/admin/staff?token=' + authToken, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    
+                    if (response.status === 401) {
+                        alert('Сессия истекла. Войдите заново.');
+                        logout();
+                        return;
+                    }
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Staff created:', data);
+                        document.getElementById('addStaffForm').reset();
+                        loadStaff();
+                    } else {
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        let errorMessage = 'Ошибка добавления сотрудника';
+                        try {
+                            const data = JSON.parse(errorText);
+                            errorMessage = data.error || errorMessage;
+                        } catch (e) {
+                            errorMessage = errorText || errorMessage;
+                        }
+                        alert(errorMessage);
+                    }
+                } catch (error) {
+                    console.error('Request error:', error);
+                    alert('Ошибка соединения с сервером: ' + error.message);
+                }
+            });
+        } else {
+            console.error('addStaffForm not found!');
+        }
         
         async function loadStaff() {
             const contentDiv = document.getElementById('staffContent');
