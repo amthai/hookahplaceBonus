@@ -67,18 +67,20 @@ const upload = multer({
   }
 });
 
-// Обработчик ошибок multer
-const handleMulterError = (err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+// Обертка для обработки ошибок multer
+const multerUpload = (req, res, next) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+        }
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(400).json({ error: err.message });
     }
-    return res.status(400).json({ error: err.message });
-  }
-  if (err) {
-    return res.status(400).json({ error: err.message });
-  }
-  next();
+    next();
+  });
 };
 
 // Middleware для правильной раздачи шрифтов
@@ -373,7 +375,7 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 });
 
 // Создать сотрудника (админ)
-app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), handleMulterError, async (req, res) => {
+app.post('/api/admin/staff', requireAdmin, multerUpload, async (req, res) => {
   const { name, is_on_shift } = req.body;
   
   if (!name) {
@@ -403,7 +405,7 @@ app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), handleMulter
 });
 
 // Обновить сотрудника (админ)
-app.put('/api/admin/staff/:staffId', requireAdmin, upload.single('avatar'), handleMulterError, async (req, res) => {
+app.put('/api/admin/staff/:staffId', requireAdmin, multerUpload, async (req, res) => {
   const staffId = parseInt(req.params.staffId);
   const { name, is_on_shift } = req.body;
   
