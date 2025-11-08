@@ -321,6 +321,10 @@ app.get('/api/admin/users/:userId/visits', requireAdmin, async (req, res) => {
 app.get('/api/staff/on-shift', async (req, res) => {
   try {
     const staff = await db.getStaffOnShift();
+    // Логируем данные для отладки
+    staff.forEach(member => {
+      console.log(`Staff: ${member.name}, has avatar: ${!!member.avatar_url}, avatar length: ${member.avatar_url ? member.avatar_url.length : 0}, avatar preview: ${member.avatar_url ? member.avatar_url.substring(0, 50) : 'null'}`);
+    });
     res.json(staff);
   } catch (error) {
     console.error('Error getting staff on shift:', error);
