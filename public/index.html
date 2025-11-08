@@ -4,8 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HookahPlace Bonus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            --hp-accent: var(--tg-theme-button-color, #9146FF);
+            --hp-accent-text: var(--tg-theme-button-text-color, #ffffff);
+            --hp-bg: var(--tg-theme-bg-color, #0f0f10);
+            --hp-text: var(--tg-theme-text-color, #ffffff);
+            --hp-muted: var(--tg-theme-hint-color, #8b8b8b);
+            --hp-surface: var(--tg-theme-secondary-bg-color, #17181a);
+            --hp-surface-2: rgba(255,255,255,0.06);
+            --hp-border: rgba(255,255,255,0.08);
+            --hp-radius: 16px;
+            --hp-radius-sm: 12px;
+            --hp-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
         * {
             margin: 0;
             padding: 0;
@@ -14,130 +30,165 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
+            background: #000000;
+            color: var(--hp-text);
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .container {
-            max-width: 400px;
+            max-width: 440px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 20px 20px 20px;
         }
 
         .header {
+            position: relative;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 44px;
+            padding: 24px 0 8px;
         }
 
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #2481cc);
-            margin-bottom: 10px;
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            border: 1px solid var(--hp-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .brand-emoji {
+            font-size: 20px;
+        }
+
+        .brand-name {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .subtitle {
+            margin-top: 10px;
+            color: var(--hp-muted);
+            font-size: 13px;
         }
 
         .user-info {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            position: relative;
+            margin-bottom: 44px;
         }
 
         .user-name {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 10px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 24px;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+            margin-bottom: 14px;
         }
 
         .stats {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
         .stat-item {
             text-align: center;
-            flex: 1;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+            border: 1px solid var(--hp-border);
+            border-radius: var(--hp-radius-sm);
+            padding: 12px 8px;
         }
 
         .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #2481cc);
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--hp-accent);
         }
 
         .stat-label {
             font-size: 12px;
-            color: var(--tg-theme-hint-color, #999999);
-            margin-top: 4px;
+            color: var(--hp-muted);
+            margin-top: 2px;
         }
 
         .progress-bar {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 10px;
-            height: 8px;
-            margin: 10px 0;
+            position: relative;
+            background: #2F2F2F;
+            border: none;
+            border-radius: 999px;
+            height: 6px;
+            margin: 8px 0 6px;
             overflow: hidden;
         }
 
         .progress-fill {
-            background: var(--tg-theme-button-color, #2481cc);
+            background: #FF0000;
             height: 100%;
-            border-radius: 10px;
+            border-radius: 999px;
             transition: width 0.3s ease;
         }
 
         .bonus-info {
             background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-            color: white;
-            border-radius: 12px;
-            padding: 15px;
+            color: #ffffff;
+            border-radius: var(--hp-radius);
+            padding: 14px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: var(--hp-shadow);
         }
 
         .bonus-text {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
         }
 
         .scan-button {
             width: 100%;
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
+            margin-top: 16px;
+            background: #FF0000;
+            color: #ffffff;
             border: none;
-            border-radius: 12px;
+            border-radius: 0;
             padding: 16px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.2px;
             cursor: pointer;
-            margin-bottom: 20px;
-            transition: opacity 0.2s;
+            transition: transform 0.08s ease, opacity 0.2s ease;
         }
 
-        .scan-button:hover {
-            opacity: 0.9;
-        }
+        .scan-button:hover { opacity: 0.95; }
+        .scan-button:active { transform: translateY(1px); }
 
-        .scan-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .scan-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
         .history-section {
-            margin-top: 30px;
+            margin-top: 24px;
         }
 
         .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 24px;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            margin-bottom: 10px;
+            color: var(--hp-muted);
+            text-transform: uppercase;
         }
 
         .visit-item {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+            border: 1px solid var(--hp-border);
+            border-radius: var(--hp-radius-sm);
             padding: 12px;
             margin-bottom: 8px;
             display: flex;
@@ -146,89 +197,90 @@
         }
 
         .visit-date {
-            font-size: 14px;
-            color: var(--tg-theme-hint-color, #999999);
+            font-size: 13px;
+            color: var(--hp-muted);
         }
 
         .bonus-item {
             background: linear-gradient(135deg, #4ecdc4, #44a08d);
-            color: white;
-            border-radius: 8px;
+            color: #ffffff;
+            border-radius: var(--hp-radius-sm);
             padding: 12px;
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: var(--hp-shadow);
         }
 
-        .bonus-type {
-            font-weight: 600;
-        }
+        .bonus-type { font-weight: 700; }
 
-        .bonus-status {
-            font-size: 12px;
-            opacity: 0.8;
-        }
+        .bonus-status { font-size: 12px; opacity: 0.8; }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: var(--tg-theme-hint-color, #999999);
+            color: var(--hp-muted);
         }
 
         .error {
             background: #ff6b6b;
-            color: white;
+            color: #ffffff;
             padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            border-radius: var(--hp-radius-sm);
+            margin-bottom: 16px;
             text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: var(--hp-shadow);
         }
 
         .success {
             background: #4ecdc4;
-            color: white;
+            color: #ffffff;
             padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            border-radius: var(--hp-radius-sm);
+            margin-bottom: 16px;
             text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: var(--hp-shadow);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🚬 HookahPlace</div>
-            <div>Программа лояльности</div>
-        </div>
-
-        <div id="userInfo" class="user-info">
-            <div class="user-name" id="userName">Загрузка...</div>
-            <div class="stats">
-                <div class="stat-item">
-                    <div class="stat-number" id="visitCount">0</div>
-                    <div class="stat-label">Посещений</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="bonusCount">0</div>
-                    <div class="stat-label">Бонусов</div>
+            <div class="logo-wrap" style="display:flex;align-items:center;justify-content:center;">
+                <div style="width:100%;">
+<svg width="352" height="49" viewBox="0 0 352 49" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;">
+<path d="M10.5743 47.962H3.12252V0.54193H10.5743V20.8648H19.0421V0.54193H26.6293V47.962H19.0421V27.6391H10.5743V47.962ZM38.8744 37.0554C38.8744 38.7716 39.2131 39.9909 39.8906 40.7135C40.6132 41.391 41.5616 41.7297 42.7358 41.7297C43.91 41.7297 44.8358 41.391 45.5132 40.7135C46.2358 39.9909 46.5971 38.7716 46.5971 37.0554V11.4486C46.5971 9.7324 46.2358 8.53561 45.5132 7.85818C44.8358 7.13558 43.91 6.77429 42.7358 6.77429C41.5616 6.77429 40.6132 7.13558 39.8906 7.85818C39.2131 8.53561 38.8744 9.7324 38.8744 11.4486V37.0554ZM31.4227 11.9228C31.4227 8.08399 32.3937 5.14845 34.3356 3.11616C36.2776 1.03871 39.0777 -1.08803e-05 42.7358 -1.08803e-05C46.3939 -1.08803e-05 49.1939 1.03871 51.1359 3.11616C53.0779 5.14845 54.0489 8.08399 54.0489 11.9228V36.5812C54.0489 40.42 53.0779 43.3781 51.1359 45.4555C49.1939 47.4878 46.3939 48.504 42.7358 48.504C39.0777 48.504 36.2776 47.4878 34.3356 45.4555C32.3937 43.3781 31.4227 40.42 31.4227 36.5812V11.9228ZM65.7335 37.0554C65.7335 38.7716 66.0722 39.9909 66.7496 40.7135C67.4722 41.391 68.4206 41.7297 69.5948 41.7297C70.769 41.7297 71.6949 41.391 72.3723 40.7135C73.0949 39.9909 73.4562 38.7716 73.4562 37.0554V11.4486C73.4562 9.7324 73.0949 8.53561 72.3723 7.85818C71.6949 7.13558 70.769 6.77429 69.5948 6.77429C68.4206 6.77429 67.4722 7.13558 66.7496 7.85818C66.0722 8.53561 65.7335 9.7324 65.7335 11.4486V37.0554ZM58.2817 11.9228C58.2817 8.08399 59.2527 5.14845 61.1947 3.11616C63.1367 1.03871 65.9367 -1.08803e-05 69.5948 -1.08803e-05C73.2529 -1.08803e-05 76.053 1.03871 77.995 3.11616C79.9369 5.14845 80.9079 8.08399 80.9079 11.9228V36.5812C80.9079 40.42 79.9369 43.3781 77.995 45.4555C76.053 47.4878 73.2529 48.504 69.5948 48.504C65.9367 48.504 63.1367 47.4878 61.1947 45.4555C59.2527 43.3781 58.2817 40.42 58.2817 36.5812V11.9228ZM95.5055 29.0617L93.2022 33.3973V47.962H85.7505V0.54193H93.2022V21.2035L103.093 0.54193H110.409L100.044 21.6777L110.409 47.962H102.754L95.5055 29.0617ZM137.917 47.962H130.397L129.11 39.3587H119.965L118.678 47.962H111.836L119.423 0.54193H130.33L137.917 47.962ZM120.913 32.9231H128.094L124.504 8.94206L120.913 32.9231ZM148.839 47.962H141.387V0.54193H148.839V20.8648H157.307V0.54193H164.894V47.962H157.307V27.6391H148.839V47.962Z" fill="white"/>
+<path d="M219.649 18.657C219.649 18.657 213.827 22.3887 213.827 24.4236C213.827 26.4714 219.649 30.1993 219.649 30.1993C217.496 38.9647 210.6 45.8904 201.79 48.1211C201.79 48.1211 198.052 42.424 196.031 42.424C193.944 42.424 190.124 48.2636 190.124 48.2636C181.028 46.2105 173.851 39.1695 171.662 30.1993C171.662 30.1993 177.486 26.4714 177.486 24.4236C177.486 22.3887 171.662 18.657 171.662 18.657C173.826 9.78575 180.873 2.80508 189.838 0.6604C189.838 0.6604 193.587 6.42888 195.645 6.42888C197.71 6.42888 201.488 0.6604 201.488 0.6604C210.426 2.80324 217.487 9.78575 219.649 18.657Z" fill="#FF0000"/>
+<path d="M237.354 0.54193C241.102 0.54193 243.88 1.53549 245.686 3.52262C247.538 5.50975 248.464 8.4227 248.464 12.2615V18.4261C248.464 22.2649 247.538 25.1778 245.686 27.1649C243.88 29.1521 241.102 30.1456 237.354 30.1456H233.831V47.962H226.379V0.54193H237.354ZM233.831 7.31623V23.3713H237.354C238.528 23.3713 239.431 23.0552 240.063 22.4229C240.696 21.7907 241.012 20.6164 241.012 18.9003V11.7873C241.012 10.0711 240.696 8.8969 240.063 8.26463C239.431 7.63237 238.528 7.31623 237.354 7.31623H233.831ZM251.915 0.54193H259.367V41.1877H271.629V47.962H251.915V0.54193ZM299.12 47.962H291.601L290.313 39.3587H281.168L279.881 47.962H273.039L280.626 0.54193H291.533L299.12 47.962ZM282.117 32.9231H289.297L285.707 8.94206L282.117 32.9231ZM324.2 30.2811V36.5812C324.2 40.42 323.252 43.3781 321.355 45.4555C319.503 47.4878 316.749 48.504 313.09 48.504C309.432 48.504 306.655 47.4878 304.758 45.4555C302.906 43.3781 301.981 40.42 301.981 36.5812V11.9228C301.981 8.08399 302.906 5.14845 304.758 3.11616C306.655 1.03871 309.432 -1.08803e-05 313.09 -1.08803e-05C316.749 -1.08803e-05 319.503 1.03871 321.355 3.11616C323.252 5.14845 324.2 8.08399 324.2 11.9228V16.5293H317.155V11.4486C317.155 9.7324 316.794 8.53561 316.071 7.85818C315.394 7.13558 314.468 6.77429 313.294 6.77429C312.119 6.77429 311.171 7.13558 310.448 7.85818C309.771 8.53561 309.432 9.7324 309.432 11.4486V37.0554C309.432 38.7716 309.771 39.9684 310.448 40.6458C311.171 41.3232 312.119 41.6619 313.294 41.6619C314.468 41.6619 315.394 41.3232 316.071 40.6458C316.794 39.9684 317.155 38.7716 317.155 37.0554V30.2811H324.2ZM336.173 20.5261H346.403V27.3004H336.173V41.1877H349.044V47.962H328.722V0.54193H349.044V7.31623H336.173V20.5261Z" fill="white"/>
+</svg>
                 </div>
             </div>
+        </div>
+
+        <div class="user-info" id="userInfo">
+            <div class="user-name" id="userName">Загрузка...</div>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill" style="width: 0%"></div>
             </div>
-            <div id="progressText" style="text-align: center; font-size: 14px; color: var(--tg-theme-hint-color, #999999);">
+            <div id="progressText" style="text-align: left; font-size: 14px; color: var(--tg-theme-hint-color, #999999);">
                 До бонуса: 10 посещений
             </div>
+            <button id="scanButton" class="scan-button">Отметить посещение</button>
+        </div>
+
+        <div class="user-info">
+            <div class="user-name">Контакты</div>
+            <div style="margin-bottom: 8px;">г. Чита, ул. Столярова, 19</div>
+            <div style="margin-bottom: 8px;">+7 924 818 00 88</div>
+            <div>Ежедневно 16:00 — 03:00</div>
         </div>
 
         <div id="bonusInfo" class="bonus-info" style="display: none;">
             <div class="bonus-text">🎉 Поздравляем! Вы получили бонус!</div>
         </div>
-
-        <button id="scanButton" class="scan-button">
-            📱 Отметить посещение
-        </button>
 
         <div class="history-section">
             <div class="section-title">История посещений</div>
