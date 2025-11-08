@@ -67,6 +67,20 @@ const upload = multer({
   }
 });
 
+// Обработчик ошибок multer
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+    }
+    return res.status(400).json({ error: err.message });
+  }
+  if (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  next();
+};
+
 // Middleware для правильной раздачи шрифтов
 app.use('/fonts', express.static('public/fonts', {
   setHeaders: (res, path) => {
@@ -359,30 +373,10 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 });
 
 // Создать сотрудника (админ)
-app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
-  console.log('POST /api/admin/staff - request received');
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Body keys:', Object.keys(req.body));
-  
-  upload.single('avatar')(req, res, (err) => {
-    if (err) {
-      console.error('Multer error:', err);
-      if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
-        }
-      }
-      return res.status(400).json({ error: err.message });
-    }
-    console.log('File uploaded successfully:', req.file ? req.file.originalname : 'no file');
-    next();
-  });
-}, async (req, res) => {
-  console.log('Processing staff creation, body:', req.body);
+app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), handleMulterError, async (req, res) => {
   const { name, is_on_shift } = req.body;
   
   if (!name) {
-    console.log('Name is missing');
     return res.status(400).json({ error: 'Имя сотрудника обязательно' });
   }
   
@@ -391,25 +385,16 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
     
     // Если файл загружен, конвертируем в base64 и сохраняем в БД
     if (req.file) {
-      try {
-        console.log('Converting file to base64, size:', req.file.size);
-        const base64 = req.file.buffer.toString('base64');
-        const mimeType = req.file.mimetype;
-        avatar_url = `data:${mimeType};base64,${base64}`;
-        console.log(`Avatar uploaded: ${mimeType}, size: ${req.file.size} bytes, base64 length: ${base64.length}`);
-      } catch (error) {
-        console.error('Error converting file to base64:', error);
-        return res.status(500).json({ error: 'Ошибка обработки изображения' });
-      }
+      const base64 = req.file.buffer.toString('base64');
+      const mimeType = req.file.mimetype;
+      avatar_url = `data:${mimeType};base64,${base64}`;
     }
     
-    console.log('Creating staff in database:', { name, hasAvatar: !!avatar_url });
     const staff = await db.createStaff({
       name,
       avatar_url: avatar_url,
       is_on_shift: is_on_shift === 'true' || is_on_shift === true
     });
-    console.log('Staff created successfully:', staff.id);
     res.json(staff);
   } catch (error) {
     console.error('Error creating staff:', error);
@@ -418,19 +403,7 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
 });
 
 // Обновить сотрудника (админ)
-app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
-  upload.single('avatar')(req, res, (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
-        }
-      }
-      return res.status(400).json({ error: err.message });
-    }
-    next();
-  });
-}, async (req, res) => {
+app.put('/api/admin/staff/:staffId', requireAdmin, upload.single('avatar'), handleMulterError, async (req, res) => {
   const staffId = parseInt(req.params.staffId);
   const { name, is_on_shift } = req.body;
   
