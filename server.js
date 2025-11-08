@@ -26,9 +26,9 @@ const app = express();
 
 // Middleware
 app.use(cors());
-// Для FormData не используем express.json(), так как multer обрабатывает multipart/form-data
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// express.json() только для JSON запросов, не для multipart/form-data
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Настройка загрузки файлов
 // На Vercel используем /tmp, локально - public/uploads/staff
@@ -77,7 +77,7 @@ const multerUpload = (req, res, next) => {
         }
         return res.status(400).json({ error: err.message });
       }
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ error: err.message || 'Ошибка загрузки файла' });
     }
     next();
   });
@@ -109,8 +109,12 @@ const activeSessions = new Set(); // Простое хранилище сесс�
 const requireAdmin = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
   
-  if (!token || !activeSessions.has(token)) {
-    return res.status(401).json({ error: 'Необходима авторизация' });
+  if (!token) {
+    return res.status(401).json({ error: 'Токен не предоставлен' });
+  }
+  
+  if (!activeSessions.has(token)) {
+    return res.status(401).json({ error: 'Недействительный токен' });
   }
   
   next();
