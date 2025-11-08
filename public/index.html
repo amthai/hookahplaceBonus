@@ -420,12 +420,20 @@
             background: var(--hp-surface);
             overflow: hidden;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--hp-text);
         }
         
         .staff-avatar img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
         .staff-name {
@@ -992,11 +1000,9 @@
                     
                     const avatarDiv = document.createElement('div');
                     avatarDiv.className = 'staff-avatar';
-                    avatarDiv.style.display = 'flex';
-                    avatarDiv.style.alignItems = 'center';
-                    avatarDiv.style.justifyContent = 'center';
-                    avatarDiv.style.fontSize = '20px';
-                    avatarDiv.style.fontWeight = '700';
+                    
+                    // Всегда показываем инициал как fallback
+                    avatarDiv.textContent = member.name.charAt(0).toUpperCase();
                     
                     if (member.avatar_url) {
                         console.log('Creating image for:', member.name, 'with URL:', member.avatar_url);
@@ -1009,22 +1015,11 @@
                             avatar.src = member.avatar_url.startsWith('/') ? member.avatar_url : '/' + member.avatar_url;
                         }
                         avatar.alt = member.name;
-                        avatar.style.width = '100%';
-                        avatar.style.height = '100%';
-                        avatar.style.objectFit = 'cover';
-                        avatar.style.borderRadius = '50%';
-                        avatar.style.position = 'absolute';
-                        avatar.style.top = '0';
-                        avatar.style.left = '0';
-                        
-                        // Показываем инициал пока изображение загружается
-                        avatarDiv.textContent = member.name.charAt(0).toUpperCase();
                         
                         avatar.onerror = function() {
                             console.error('Image load error for:', member.name, 'URL:', avatar.src);
                             // Fallback на инициал, если изображение не загрузилось
                             this.style.display = 'none';
-                            avatarDiv.textContent = member.name.charAt(0).toUpperCase();
                         };
                         avatar.onload = function() {
                             console.log('Image loaded successfully for:', member.name);
@@ -1034,7 +1029,6 @@
                         avatarDiv.appendChild(avatar);
                     } else {
                         console.log('No avatar URL for:', member.name);
-                        avatarDiv.textContent = member.name.charAt(0).toUpperCase();
                     }
                     
                     const nameDiv = document.createElement('div');
