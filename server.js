@@ -364,7 +364,20 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 });
 
 // Создать сотрудника (админ)
-app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), async (req, res) => {
+app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+        }
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(400).json({ error: err.message || 'Ошибка загрузки файла' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const name = req.body?.name;
     const is_on_shift = req.body?.is_on_shift;
@@ -396,7 +409,20 @@ app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), async (req, 
 });
 
 // Обновить сотрудника (админ)
-app.put('/api/admin/staff/:staffId', requireAdmin, upload.single('avatar'), async (req, res) => {
+app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Размер файла не должен превышать 5MB' });
+        }
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(400).json({ error: err.message || 'Ошибка загрузки файла' });
+    }
+    next();
+  });
+}, async (req, res) => {
   const staffId = parseInt(req.params.staffId);
   const { name, is_on_shift } = req.body;
   
