@@ -746,6 +746,9 @@
             try {
                 const response = await fetch('/api/admin/staff?token=' + authToken, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    },
                     body: formData
                 });
                 
@@ -772,7 +775,8 @@
                 const response = await fetch(`/api/admin/staff/${staffId}?token=${authToken}`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
                     },
                     body: JSON.stringify({ is_on_shift: isOnShift })
                 });
@@ -799,7 +803,10 @@
             
             try {
                 const response = await fetch(`/api/admin/staff/${staffId}?token=${authToken}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    }
                 });
                 
                 if (response.status === 401) {
