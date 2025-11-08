@@ -67,6 +67,23 @@ app.use('/uploads', express.static('public/uploads', {
 
 app.use(express.static('public'));
 
+// Инициализация Supabase Storage клиента (ДО настройки multer!)
+const supabaseUrl = process.env.SUPABASE_URL || 'https://vvuodxabzeudqskteiiz.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+let supabaseStorage = null;
+
+if (supabaseServiceKey) {
+  supabaseStorage = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  console.log('Supabase Storage initialized');
+} else {
+  console.warn('Supabase Storage not configured - using local file storage');
+}
+
 // Настройка multer для загрузки файлов
 // Используем memory storage для загрузки в Supabase Storage
 const memoryStorage = multer.memoryStorage();
@@ -102,23 +119,6 @@ const upload = multer({
     }
   }
 });
-
-// Инициализация Supabase Storage клиента
-const supabaseUrl = process.env.SUPABASE_URL || 'https://vvuodxabzeudqskteiiz.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-let supabaseStorage = null;
-
-if (supabaseServiceKey) {
-  supabaseStorage = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-  console.log('Supabase Storage initialized');
-} else {
-  console.warn('Supabase Storage not configured - using local file storage');
-}
 
 // Функция для загрузки файла в Supabase Storage
 async function uploadToSupabaseStorage(file, filename) {
