@@ -954,10 +954,22 @@
                 
                 staff.forEach(member => {
                     const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    let avatarHtml = initials;
+                    
+                    if (member.avatar_url) {
+                        // Проверяем, что это data URL или обычный URL
+                        const isDataUrl = member.avatar_url.startsWith('data:');
+                        const isUrl = member.avatar_url.startsWith('http://') || member.avatar_url.startsWith('https://') || member.avatar_url.startsWith('/');
+                        
+                        if (isDataUrl || isUrl) {
+                            avatarHtml = `<img src="${member.avatar_url}" alt="${member.name}" onerror="this.parentElement.textContent='${initials}'" style="display: block;">`;
+                        }
+                    }
+                    
                     html += `
                         <div class="staff-item">
                             <div class="staff-avatar">
-                                ${member.avatar_url ? `<img src="${member.avatar_url}" alt="${member.name}">` : initials}
+                                ${avatarHtml}
                             </div>
                             <div class="staff-name">${member.name}</div>
                         </div>

@@ -365,9 +365,15 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
     
     // Если файл загружен, конвертируем в base64 и сохраняем в БД
     if (req.file) {
-      const base64 = req.file.buffer.toString('base64');
-      const mimeType = req.file.mimetype;
-      avatar_url = `data:${mimeType};base64,${base64}`;
+      try {
+        const base64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        avatar_url = `data:${mimeType};base64,${base64}`;
+        console.log(`Avatar uploaded: ${mimeType}, size: ${req.file.size} bytes, base64 length: ${base64.length}`);
+      } catch (error) {
+        console.error('Error converting file to base64:', error);
+        return res.status(500).json({ error: 'Ошибка обработки изображения' });
+      }
     }
     
     const staff = await db.createStaff({
@@ -407,9 +413,15 @@ app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
     
     // Если файл загружен, конвертируем в base64
     if (req.file) {
-      const base64 = req.file.buffer.toString('base64');
-      const mimeType = req.file.mimetype;
-      avatar_url = `data:${mimeType};base64,${base64}`;
+      try {
+        const base64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        avatar_url = `data:${mimeType};base64,${base64}`;
+        console.log(`Avatar updated: ${mimeType}, size: ${req.file.size} bytes, base64 length: ${base64.length}`);
+      } catch (error) {
+        console.error('Error converting file to base64:', error);
+        return res.status(500).json({ error: 'Ошибка обработки изображения' });
+      }
     }
     
     const staff = await db.updateStaff(staffId, {
