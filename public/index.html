@@ -456,9 +456,6 @@
                                'Пользователь';
                 document.getElementById('userName').textContent = userName;
                 
-                document.getElementById('visitCount').textContent = data.visits;
-                document.getElementById('bonusCount').textContent = data.bonuses;
-                
                 // Обновляем прогресс бар
                 const progress = ((data.visits % 10) / 10) * 100;
                 document.getElementById('progressFill').style.width = `${progress}%`;
