@@ -273,70 +273,6 @@
             display: block;
         }
         
-        .add-staff-form {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .add-staff-form h3 {
-            margin-bottom: 15px;
-            color: #333;
-        }
-        
-        .staff-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-        }
-        
-        .staff-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex: 1;
-        }
-        
-        .staff-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 20px;
-        }
-        
-        .staff-avatar img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-        
-        .staff-name {
-            font-weight: 700;
-            color: #333;
-        }
-        
-        .staff-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .shift-toggle {
-            display: flex;
-            align-items: center;
             gap: 8px;
         }
         
@@ -420,33 +356,11 @@
             
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('users')">Пользователи</button>
-                <button class="tab" onclick="switchTab('staff')">Сотрудники</button>
             </div>
             
             <!-- Вкладка Пользователи -->
             <div id="usersTab" class="tab-content active">
                 <div id="usersContent">
-                    <div class="loading">Загрузка...</div>
-                </div>
-            </div>
-            
-            <!-- Вкладка Сотрудники -->
-            <div id="staffTab" class="tab-content">
-                <div class="add-staff-form">
-                    <h3>Добавить сотрудника</h3>
-                    <form id="addStaffForm" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-                        <div class="form-group" style="flex: 1; min-width: 200px;">
-                            <label for="staffName">Имя</label>
-                            <input type="text" id="staffName" name="name" required>
-                        </div>
-                        <div class="form-group" style="flex: 1; min-width: 200px;">
-                            <label for="staffAvatar">Аватарка (необязательно)</label>
-                            <input type="file" id="staffAvatar" name="avatar" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp">
-                        </div>
-                        <button type="submit" style="align-self: flex-end;">Добавить</button>
-                    </form>
-                </div>
-                <div id="staffContent">
                     <div class="loading">Загрузка...</div>
                 </div>
             </div>
@@ -543,10 +457,6 @@
                 document.querySelector('.tab:first-child').classList.add('active');
                 document.getElementById('usersTab').classList.add('active');
                 loadUsers();
-            } else if (tabName === 'staff') {
-                document.querySelector('.tab:last-child').classList.add('active');
-                document.getElementById('staffTab').classList.add('active');
-                loadStaff();
             }
         }
         
@@ -676,196 +586,6 @@
             }
         });
         
-        // Обработка формы добавления сотрудника
-        const addStaffForm = document.getElementById('addStaffForm');
-        if (addStaffForm) {
-            addStaffForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                console.log('Form submit triggered');
-                
-                const name = document.getElementById('staffName').value;
-                const avatarFile = document.getElementById('staffAvatar').files[0];
-                
-                console.log('Name:', name, 'Avatar file:', avatarFile ? avatarFile.name : 'none');
-                
-                if (!name) {
-                    alert('Введите имя сотрудника');
-                    return;
-                }
-                
-                if (!authToken) {
-                    alert('Ошибка: не авторизован. Перезагрузите страницу.');
-                    return;
-                }
-                
-                try {
-                    const formData = new FormData();
-                    formData.append('name', name);
-                    if (avatarFile) {
-                        formData.append('avatar', avatarFile);
-                    }
-                    
-                    console.log('Sending request to /api/admin/staff');
-                    console.log('Auth token:', authToken ? 'present' : 'missing');
-                    console.log('FormData entries:', Array.from(formData.entries()));
-                    
-                    const response = await fetch('/api/admin/staff?token=' + authToken, {
-                        method: 'POST',
-                        body: formData
-                    }).catch(error => {
-                        console.error('Fetch error:', error);
-                        throw error;
-                    });
-                    
-                    console.log('Response received, status:', response.status);
-                    
-                    if (response.status === 401) {
-                        alert('Сессия истекла. Войдите заново.');
-                        logout();
-                        return;
-                    }
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        console.log('Staff created:', data);
-                        document.getElementById('addStaffForm').reset();
-                        loadStaff();
-                    } else {
-                        const errorText = await response.text();
-                        console.error('Error response:', errorText);
-                        let errorMessage = 'Ошибка добавления сотрудника';
-                        try {
-                            const data = JSON.parse(errorText);
-                            errorMessage = data.error || errorMessage;
-                        } catch (e) {
-                            errorMessage = errorText || errorMessage;
-                        }
-                        alert(errorMessage);
-                    }
-                } catch (error) {
-                    console.error('Request error:', error);
-                    alert('Ошибка соединения с сервером: ' + error.message);
-                }
-            });
-        } else {
-            console.error('addStaffForm not found!');
-        }
-        
-        async function loadStaff() {
-            const contentDiv = document.getElementById('staffContent');
-            contentDiv.innerHTML = '<div class="loading">Загрузка...</div>';
-            
-            try {
-                const response = await fetch('/api/admin/staff?token=' + authToken);
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
-                
-                const staff = await response.json();
-                
-                if (staff.length === 0) {
-                    contentDiv.innerHTML = '<div class="empty">Сотрудников пока нет</div>';
-                    return;
-                }
-                
-                let html = '';
-                
-                staff.forEach(member => {
-                    const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                    let avatarHtml = initials;
-                    
-                    if (member.avatar_url) {
-                        // Проверяем, что это data URL или обычный URL
-                        const isDataUrl = member.avatar_url.startsWith('data:');
-                        const isUrl = member.avatar_url.startsWith('http://') || member.avatar_url.startsWith('https://') || member.avatar_url.startsWith('/');
-                        
-                        if (isDataUrl || isUrl) {
-                            avatarHtml = `<img src="${member.avatar_url}" alt="${member.name}" onerror="this.parentElement.textContent='${initials}'" style="display: block;">`;
-                        }
-                    }
-                    
-                    html += `
-                        <div class="staff-item">
-                            <div class="staff-info">
-                                <div class="staff-avatar">
-                                    ${avatarHtml}
-                                </div>
-                                <div class="staff-name">${member.name}</div>
-                            </div>
-                            <div class="staff-actions">
-                                <div class="shift-toggle">
-                                    <span>На смене:</span>
-                                    <label class="switch">
-                                        <input type="checkbox" ${member.is_on_shift ? 'checked' : ''} 
-                                               onchange="toggleShift(${member.id}, this.checked)">
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <button class="delete-btn" onclick="deleteStaff(${member.id})">Удалить</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                contentDiv.innerHTML = html;
-            } catch (error) {
-                contentDiv.innerHTML = '<div class="error">Ошибка загрузки данных</div>';
-            }
-        }
-        
-        async function toggleShift(staffId, isOnShift) {
-            try {
-                const response = await fetch(`/api/admin/staff/${staffId}/shift?token=${authToken}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ is_on_shift: isOnShift })
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
-                
-                if (!response.ok) {
-                    const data = await response.json();
-                    alert(data.error || 'Ошибка обновления статуса');
-                    loadStaff(); // Перезагружаем для отката состояния
-                }
-            } catch (error) {
-                alert('Ошибка соединения с сервером');
-                loadStaff(); // Перезагружаем для отката состояния
-            }
-        }
-        
-        async function deleteStaff(staffId) {
-            if (!confirm('Удалить этого сотрудника?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/admin/staff/${staffId}?token=${authToken}`, {
-                    method: 'DELETE'
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
-                
-                if (response.ok) {
-                    loadStaff();
-                } else {
-                    const data = await response.json();
-                    alert(data.error || 'Ошибка удаления');
-                }
-            } catch (error) {
-                alert('Ошибка соединения с сервером');
-            }
-        }
     </script>
 </body>
 </html>
