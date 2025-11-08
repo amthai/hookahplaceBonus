@@ -332,7 +332,9 @@
         }
 
         .visit-item {
-            margin-bottom: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #2F2F2F;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -341,6 +343,12 @@
             font-size: 14px;
             font-weight: 400;
             text-transform: uppercase;
+        }
+        
+        .visit-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
         }
 
         .visit-date {
