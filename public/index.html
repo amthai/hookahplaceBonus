@@ -944,6 +944,7 @@
                 }
                 
                 const staff = await response.json();
+                console.log('Staff on shift loaded:', staff);
                 
                 if (staff.length === 0) {
                     staffDiv.innerHTML = '<div style="text-align: center; color: var(--hp-muted); padding: 20px;">Сегодня никого нет на смене</div>';
@@ -953,6 +954,7 @@
                 let html = '';
                 
                 staff.forEach(member => {
+                    console.log(`Staff member: ${member.name}, avatar_url: ${member.avatar_url ? member.avatar_url.substring(0, 50) + '...' : 'null'}`);
                     const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     let avatarHtml = initials;
                     
@@ -962,7 +964,9 @@
                         const isUrl = member.avatar_url.startsWith('http://') || member.avatar_url.startsWith('https://') || member.avatar_url.startsWith('/');
                         
                         if (isDataUrl || isUrl) {
-                            avatarHtml = `<img src="${member.avatar_url}" alt="${member.name}" onerror="this.parentElement.textContent='${initials}'" style="display: block;">`;
+                            avatarHtml = `<img src="${member.avatar_url}" alt="${member.name}" onerror="console.error('Avatar load error for ${member.name}'); this.parentElement.textContent='${initials}'" onload="console.log('Avatar loaded for ${member.name}')" style="display: block;">`;
+                        } else {
+                            console.warn(`Invalid avatar_url format for ${member.name}: ${member.avatar_url.substring(0, 50)}`);
                         }
                     }
                     
