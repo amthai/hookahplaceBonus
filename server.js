@@ -379,7 +379,7 @@ app.get('/api/admin/staff', requireAdmin, async (req, res) => {
 });
 
 // Создать сотрудника (админ)
-app.post('/api/admin/staff', requireAdmin, multerUpload, async (req, res) => {
+app.post('/api/admin/staff', multerUpload, requireAdmin, async (req, res) => {
   try {
     const name = req.body?.name;
     const is_on_shift = req.body?.is_on_shift;
