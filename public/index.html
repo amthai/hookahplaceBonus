@@ -436,17 +436,6 @@
             z-index: 2;
             display: block;
         }
-        
-        .staff-avatar::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            pointer-events: none;
-        }
 
         .staff-name {
             font-family: 'Roboto Condensed', sans-serif;
@@ -1013,8 +1002,20 @@
                     const avatarDiv = document.createElement('div');
                     avatarDiv.className = 'staff-avatar';
                     
-                    // Всегда показываем инициал как fallback
-                    avatarDiv.textContent = member.name.charAt(0).toUpperCase();
+                    // Создаем элемент для инициала отдельно, чтобы можно было его скрыть
+                    const initialDiv = document.createElement('div');
+                    initialDiv.textContent = member.name.charAt(0).toUpperCase();
+                    initialDiv.style.position = 'absolute';
+                    initialDiv.style.top = '0';
+                    initialDiv.style.left = '0';
+                    initialDiv.style.width = '100%';
+                    initialDiv.style.height = '100%';
+                    initialDiv.style.display = 'flex';
+                    initialDiv.style.alignItems = 'center';
+                    initialDiv.style.justifyContent = 'center';
+                    initialDiv.style.zIndex = '1';
+                    initialDiv.style.pointerEvents = 'none';
+                    avatarDiv.appendChild(initialDiv);
                     
                     if (member.avatar_url && member.avatar_url.trim() !== '') {
                         console.log('Creating image for:', member.name, 'with URL:', member.avatar_url);
@@ -1031,7 +1032,6 @@
                             avatar.src = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
                         }
                         avatar.alt = member.name;
-                        avatar.style.display = 'block';
                         
                         console.log('Final image src:', avatar.src);
                         
@@ -1041,12 +1041,13 @@
                             console.error('Original avatar_url:', member.avatar_url);
                             // Fallback на инициал, если изображение не загрузилось
                             this.style.display = 'none';
+                            initialDiv.style.display = 'flex';
                         };
                         avatar.onload = function() {
                             console.log('✅ Image loaded successfully for:', member.name);
                             console.log('Loaded URL:', avatar.src);
                             // Скрываем инициал когда изображение загрузилось
-                            avatarDiv.textContent = '';
+                            initialDiv.style.display = 'none';
                         };
                         avatarDiv.appendChild(avatar);
                     } else {
