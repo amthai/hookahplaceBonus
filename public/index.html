@@ -402,6 +402,39 @@
             border: 1px solid rgba(255,255,255,0.2);
             box-shadow: var(--hp-shadow);
         }
+
+        .staff-member {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .staff-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 8px;
+            border: 2px solid var(--hp-border);
+            background: var(--hp-surface);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .staff-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .staff-name {
+            font-family: 'Roboto Condensed', sans-serif;
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--hp-text);
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
@@ -436,10 +469,15 @@
             <div>Ежедневно 16:00 — 03:00</div>
         </div>
 
+        <div class="history-section" id="staffSection" style="display: none;">
+            <div class="section-title">Кто сегодня на смене</div>
+            <div id="staffOnShift" style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px;"></div>
+            <div id="staffError" style="display: none; color: var(--hp-muted); font-size: 12px; margin-top: 8px;"></div>
+        </div>
+
         <div id="bonusInfo" class="bonus-info" style="display: none;">
             <div class="bonus-text">🎉 Поздравляем! Вы получили бонус!</div>
         </div>
-
 
         <div class="history-section">
             <div class="section-title">История посещений</div>
@@ -502,11 +540,18 @@
                 // Загружаем данные пользователя
                 await loadUserData();
                 await loadVisitHistory();
-                await loadStaffOnShift();
                 
             } catch (error) {
                 console.error('Ошибка инициализации:', error);
                 showError('Ошибка загрузки данных: ' + error.message);
+            }
+            
+            // Загружаем сотрудников независимо от других данных
+            try {
+                console.log('Starting to load staff on shift...');
+                await loadStaffOnShift();
+            } catch (error) {
+                console.error('Ошибка загрузки сотрудников в initApp:', error);
             }
         }
 
@@ -873,11 +918,170 @@
             }, 3000);
         }
 
+        // Загрузка сотрудников на смене
+        async function loadStaffOnShift() {
+            console.log('=== loadStaffOnShift CALLED ===');
+            console.log('Checking if staffSection exists:', !!document.getElementById('staffSection'));
+            console.log('Checking if staffOnShift exists:', !!document.getElementById('staffOnShift'));
+            
+            try {
+                console.log('Loading staff on shift...');
+                console.log('Fetching from /api/staff/on-shift');
+                
+                let response;
+                try {
+                    response = await fetch('/api/staff/on-shift', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                } catch (fetchError) {
+                    console.error('Fetch error details:', fetchError);
+                    console.error('Fetch error name:', fetchError.name);
+                    console.error('Fetch error message:', fetchError.message);
+                    throw new Error('Не удалось подключиться к серверу. Проверьте, что сервер запущен. Ошибка: ' + fetchError.message);
+                }
+                
+                console.log('Staff API response status:', response.status);
+                console.log('Staff API response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Staff API error response:', errorText);
+                    throw new Error('Ошибка загрузки сотрудников: ' + response.status + ' - ' + errorText);
+                }
+
+                const staff = await response.json();
+                console.log('Staff on shift received:', JSON.stringify(staff, null, 2));
+                console.log('Staff count:', staff.length);
+                console.log('Staff type:', typeof staff);
+                console.log('Is array:', Array.isArray(staff));
+                
+                const container = document.getElementById('staffOnShift');
+                const section = document.getElementById('staffSection');
+                
+                console.log('Container element:', container);
+                console.log('Section element:', section);
+                
+                if (!container || !section) {
+                    console.error('Staff section elements not found!');
+                    console.error('Container:', container);
+                    console.error('Section:', section);
+                    return;
+                }
+                
+                if (!staff || staff.length === 0) {
+                    console.log('No staff on shift, hiding section');
+                    section.style.display = 'none';
+                    return;
+                }
+
+                console.log('Displaying staff section with', staff.length, 'members');
+                section.style.display = 'block';
+                container.innerHTML = '';
+
+                staff.forEach((member, index) => {
+                    console.log(`Processing staff member ${index}:`, member);
+                    console.log('Member name:', member.name);
+                    console.log('Member avatar_url:', member.avatar_url);
+                    console.log('Member is_on_shift:', member.is_on_shift);
+                    
+                    const memberDiv = document.createElement('div');
+                    memberDiv.className = 'staff-member';
+                    
+                    const avatarDiv = document.createElement('div');
+                    avatarDiv.className = 'staff-avatar';
+                    avatarDiv.style.display = 'flex';
+                    avatarDiv.style.alignItems = 'center';
+                    avatarDiv.style.justifyContent = 'center';
+                    avatarDiv.style.fontSize = '20px';
+                    avatarDiv.style.fontWeight = '700';
+                    
+                    if (member.avatar_url) {
+                        console.log('Creating image for:', member.name, 'with URL:', member.avatar_url);
+                        const avatar = document.createElement('img');
+                        // Убеждаемся, что путь правильный
+                        avatar.src = member.avatar_url.startsWith('/') ? member.avatar_url : '/' + member.avatar_url;
+                        avatar.alt = member.name;
+                        avatar.style.width = '100%';
+                        avatar.style.height = '100%';
+                        avatar.style.objectFit = 'cover';
+                        avatar.style.borderRadius = '50%';
+                        avatar.style.position = 'absolute';
+                        avatar.style.top = '0';
+                        avatar.style.left = '0';
+                        
+                        // Показываем инициал пока изображение загружается
+                        avatarDiv.textContent = member.name.charAt(0).toUpperCase();
+                        
+                        avatar.onerror = function() {
+                            console.error('Image load error for:', member.name, 'URL:', avatar.src);
+                            // Fallback на инициал, если изображение не загрузилось
+                            this.style.display = 'none';
+                            avatarDiv.textContent = member.name.charAt(0).toUpperCase();
+                        };
+                        avatar.onload = function() {
+                            console.log('Image loaded successfully for:', member.name);
+                            // Скрываем инициал когда изображение загрузилось
+                            avatarDiv.textContent = '';
+                        };
+                        avatarDiv.appendChild(avatar);
+                    } else {
+                        console.log('No avatar URL for:', member.name);
+                        avatarDiv.textContent = member.name.charAt(0).toUpperCase();
+                    }
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'staff-name';
+                    nameDiv.textContent = member.name;
+                    
+                    memberDiv.appendChild(avatarDiv);
+                    memberDiv.appendChild(nameDiv);
+                    container.appendChild(memberDiv);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки сотрудников:', error);
+                console.error('Error stack:', error.stack);
+                // Не показываем ошибку пользователю, просто скрываем секцию
+                const section = document.getElementById('staffSection');
+                if (section) {
+                    section.style.display = 'none';
+                }
+            }
+        }
+
         // Обработчики событий
         document.getElementById('scanButton').addEventListener('click', scanQRCode);
 
         // Инициализация при загрузке
-        document.addEventListener('DOMContentLoaded', initApp);
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded - starting initApp');
+            initApp();
+        });
+        
+        // Также вызываем загрузку сотрудников сразу после загрузки DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded - calling loadStaffOnShift directly');
+            loadStaffOnShift().catch(err => {
+                console.error('Error in direct loadStaffOnShift call:', err);
+            });
+        });
+        
+        // Тестовая функция для проверки API (можно вызвать в консоли: testStaffAPI())
+        window.testStaffAPI = async function() {
+            console.log('=== TESTING STAFF API ===');
+            try {
+                const response = await fetch('/api/staff/on-shift');
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                return data;
+            } catch (error) {
+                console.error('Test API error:', error);
+                return null;
+            }
+        };
     </script>
 </body>
 </html>

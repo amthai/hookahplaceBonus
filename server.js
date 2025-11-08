@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const config = require('./config');
 
 // Используем Supabase PostgreSQL
@@ -38,7 +41,61 @@ app.use('/fonts', express.static('public/fonts', {
   }
 }));
 
+// Middleware для правильной раздачи изображений из uploads (должен быть ПЕРЕД общим static)
+app.use('/uploads', express.static('public/uploads', {
+  setHeaders: (res, filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    
+    // Устанавливаем правильный Content-Type в зависимости от расширения
+    const contentTypes = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp'
+    };
+    
+    if (contentTypes[ext]) {
+      res.setHeader('Content-Type', contentTypes[ext]);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      // Отключаем кеш для изображений, чтобы всегда получать правильный Content-Type
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
+
 app.use(express.static('public'));
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'public/uploads/staff';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'staff-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Только изображения разрешены!'));
+    }
+  }
+});
 
 // Инициализация базы данных
 console.log('Supabase PostgreSQL initialized');
@@ -278,6 +335,112 @@ app.get('/api/admin/users/:userId/visits', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error getting visits:', error);
     res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Staff API Routes
+// Получить всех сотрудников
+app.get('/api/admin/staff', requireAdmin, async (req, res) => {
+  try {
+    const staff = await db.getAllStaff();
+    res.json(staff);
+  } catch (error) {
+    console.error('Error getting staff:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Получить сотрудников на смене (публичный endpoint)
+app.get('/api/staff/on-shift', cors(), async (req, res) => {
+  try {
+    const staff = await db.getStaffOnShift();
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.json(staff);
+  } catch (error) {
+    console.error('Error getting staff on shift:', error);
+    res.status(500).json({ error: 'Ошибка базы данных' });
+  }
+});
+
+// Создать сотрудника
+app.post('/api/admin/staff', requireAdmin, upload.single('avatar'), async (req, res) => {
+  try {
+    const { name, is_on_shift } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Имя сотрудника обязательно' });
+    }
+    
+    let avatarUrl = null;
+    if (req.file) {
+      avatarUrl = `/uploads/staff/${req.file.filename}`;
+    }
+    
+    const staff = await db.createStaff({
+      name,
+      avatar_url: avatarUrl,
+      is_on_shift: is_on_shift === 'true' || is_on_shift === true
+    });
+    
+    res.json(staff);
+  } catch (error) {
+    console.error('Error creating staff:', error);
+    res.status(500).json({ error: 'Ошибка создания сотрудника' });
+  }
+});
+
+// Обновить сотрудника
+app.put('/api/admin/staff/:id', requireAdmin, upload.single('avatar'), async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const { name, is_on_shift } = req.body;
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (is_on_shift !== undefined) {
+      updateData.is_on_shift = is_on_shift === 'true' || is_on_shift === true;
+    }
+    
+    if (req.file) {
+      updateData.avatar_url = `/uploads/staff/${req.file.filename}`;
+    }
+    
+    const staff = await db.updateStaff(staffId, updateData);
+    
+    if (!staff) {
+      return res.status(404).json({ error: 'Сотрудник не найден' });
+    }
+    
+    res.json(staff);
+  } catch (error) {
+    console.error('Error updating staff:', error);
+    res.status(500).json({ error: 'Ошибка обновления сотрудника' });
+  }
+});
+
+// Удалить сотрудника
+app.delete('/api/admin/staff/:id', requireAdmin, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const staff = await db.deleteStaff(staffId);
+    
+    if (!staff) {
+      return res.status(404).json({ error: 'Сотрудник не найден' });
+    }
+    
+    // Удаляем файл аватарки, если он есть
+    if (staff.avatar_url) {
+      const filePath = path.join('public', staff.avatar_url);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    res.json({ message: 'Сотрудник удален' });
+  } catch (error) {
+    console.error('Error deleting staff:', error);
+    res.status(500).json({ error: 'Ошибка удаления сотрудника' });
   }
 });
 
