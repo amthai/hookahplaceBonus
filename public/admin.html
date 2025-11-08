@@ -706,12 +706,18 @@
                     }
                     
                     console.log('Sending request to /api/admin/staff');
+                    console.log('Auth token:', authToken ? 'present' : 'missing');
+                    console.log('FormData entries:', Array.from(formData.entries()));
+                    
                     const response = await fetch('/api/admin/staff?token=' + authToken, {
                         method: 'POST',
                         body: formData
+                    }).catch(error => {
+                        console.error('Fetch error:', error);
+                        throw error;
                     });
                     
-                    console.log('Response status:', response.status);
+                    console.log('Response received, status:', response.status);
                     
                     if (response.status === 401) {
                         alert('Сессия истекла. Войдите заново.');
