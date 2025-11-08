@@ -29,9 +29,20 @@ app.use(cors());
 app.use(express.json());
 
 // Настройка загрузки файлов
-const uploadsDir = path.join(__dirname, 'public', 'uploads', 'staff');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// На Vercel используем /tmp, локально - public/uploads/staff
+const isVercel = process.env.VERCEL === '1';
+const uploadsDir = isVercel 
+  ? path.join('/tmp', 'uploads', 'staff')
+  : path.join(__dirname, 'public', 'uploads', 'staff');
+
+// Создаем папку для загрузок с обработкой ошибок
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('Error creating uploads directory:', error);
+  // На Vercel это может быть нормально, если папка уже существует
 }
 
 const storage = multer.diskStorage({
@@ -315,6 +326,29 @@ app.get('/api/admin/users/:userId/visits', requireAdmin, async (req, res) => {
 });
 
 // Staff API Routes
+// Получить аватарку сотрудника (для Vercel /tmp)
+app.get('/api/staff/avatar/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadsDir, filename);
+  
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Файл не найден' });
+  }
+  
+  const ext = path.extname(filename).toLowerCase();
+  const contentType = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
+  }[ext] || 'image/jpeg';
+  
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.sendFile(filePath);
+});
+
 // Получить сотрудников на смене (публичный эндпоинт)
 app.get('/api/staff/on-shift', async (req, res) => {
   try {
@@ -366,7 +400,17 @@ app.post('/api/admin/staff', requireAdmin, (req, res, next) => {
     
     // Если файл загружен, формируем URL
     if (req.file) {
-      avatar_url = `/uploads/staff/${req.file.filename}`;
+      // На Vercel файлы в /tmp не доступны через статику, используем base64 или внешнее хранилище
+      // Для простоты используем временное решение - сохраняем в /tmp и возвращаем путь
+      // В продакшене лучше использовать Supabase Storage или другой CDN
+      if (isVercel) {
+        // На Vercel читаем файл и конвертируем в base64 или используем временный URL
+        // Пока используем путь, но это не будет работать для статики
+        // TODO: Интегрировать Supabase Storage для постоянного хранения
+        avatar_url = `/api/staff/avatar/${req.file.filename}`;
+      } else {
+        avatar_url = `/uploads/staff/${req.file.filename}`;
+      }
     }
     
     const staff = await db.createStaff({
@@ -410,12 +454,23 @@ app.put('/api/admin/staff/:staffId', requireAdmin, (req, res, next) => {
     
     // Если файл загружен, формируем новый URL
     if (req.file) {
-      avatar_url = `/uploads/staff/${req.file.filename}`;
+      if (isVercel) {
+        avatar_url = `/api/staff/avatar/${req.file.filename}`;
+      } else {
+        avatar_url = `/uploads/staff/${req.file.filename}`;
+      }
       
       // Удаляем старый файл, если он был
-      if (currentStaff && currentStaff.avatar_url && currentStaff.avatar_url.startsWith('/uploads/staff/')) {
-        const oldFilePath = path.join(__dirname, 'public', currentStaff.avatar_url);
-        if (fs.existsSync(oldFilePath)) {
+      if (currentStaff && currentStaff.avatar_url) {
+        let oldFilePath;
+        if (currentStaff.avatar_url.startsWith('/api/staff/avatar/')) {
+          const oldFilename = currentStaff.avatar_url.split('/').pop();
+          oldFilePath = path.join(uploadsDir, oldFilename);
+        } else if (currentStaff.avatar_url.startsWith('/uploads/staff/')) {
+          oldFilePath = path.join(__dirname, 'public', currentStaff.avatar_url);
+        }
+        
+        if (oldFilePath && fs.existsSync(oldFilePath)) {
           fs.unlinkSync(oldFilePath);
         }
       }
@@ -484,9 +539,16 @@ app.delete('/api/admin/staff/:staffId', requireAdmin, async (req, res) => {
     const staff = await db.deleteStaff(staffId);
     
     // Удаляем файл аватарки, если он был
-    if (staff.avatar_url && staff.avatar_url.startsWith('/uploads/staff/')) {
-      const filePath = path.join(__dirname, 'public', staff.avatar_url);
-      if (fs.existsSync(filePath)) {
+    if (staff.avatar_url) {
+      let filePath;
+      if (staff.avatar_url.startsWith('/api/staff/avatar/')) {
+        const filename = staff.avatar_url.split('/').pop();
+        filePath = path.join(uploadsDir, filename);
+      } else if (staff.avatar_url.startsWith('/uploads/staff/')) {
+        filePath = path.join(__dirname, 'public', staff.avatar_url);
+      }
+      
+      if (filePath && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     }
