@@ -24,6 +24,18 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Middleware для правильной раздачи шрифтов
+app.use('/fonts', express.static('public/fonts', {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.ttf')) {
+      res.setHeader('Content-Type', 'font/ttf');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
+
 app.use(express.static('public'));
 
 // Инициализация базы данных
