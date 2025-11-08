@@ -321,11 +321,16 @@ app.get('/api/admin/users/:userId/visits', requireAdmin, async (req, res) => {
 app.get('/api/staff/on-shift', async (req, res) => {
   try {
     const staff = await db.getStaffOnShift();
-    // Логируем данные для отладки
-    staff.forEach(member => {
-      console.log(`Staff: ${member.name}, has avatar: ${!!member.avatar_url}, avatar length: ${member.avatar_url ? member.avatar_url.length : 0}, avatar preview: ${member.avatar_url ? member.avatar_url.substring(0, 50) : 'null'}`);
+    // Очищаем старые URL форматы (пути к файлам), оставляем только base64 data URLs
+    const cleanedStaff = staff.map(member => {
+      if (member.avatar_url && !member.avatar_url.startsWith('data:')) {
+        // Если это не data URL, значит старый формат - очищаем
+        console.log(`Cleaning old avatar URL for ${member.name}: ${member.avatar_url.substring(0, 50)}`);
+        return { ...member, avatar_url: null };
+      }
+      return member;
     });
-    res.json(staff);
+    res.json(cleanedStaff);
   } catch (error) {
     console.error('Error getting staff on shift:', error);
     res.status(500).json({ error: 'Ошибка базы данных' });
@@ -336,7 +341,15 @@ app.get('/api/staff/on-shift', async (req, res) => {
 app.get('/api/admin/staff', requireAdmin, async (req, res) => {
   try {
     const staff = await db.getAllStaff();
-    res.json(staff);
+    // Очищаем старые URL форматы для админки тоже
+    const cleanedStaff = staff.map(member => {
+      if (member.avatar_url && !member.avatar_url.startsWith('data:')) {
+        // Если это не data URL, значит старый формат - очищаем
+        return { ...member, avatar_url: null };
+      }
+      return member;
+    });
+    res.json(cleanedStaff);
   } catch (error) {
     console.error('Error getting staff:', error);
     res.status(500).json({ error: 'Ошибка базы данных' });
